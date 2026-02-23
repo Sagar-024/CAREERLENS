@@ -1,12 +1,12 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, Variants } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Check, TrendingUp, Cpu, Server, Lock } from "lucide-react";
 
 /* ─── Animation Variants ─── */
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 40 },
   visible: {
     opacity: 1,

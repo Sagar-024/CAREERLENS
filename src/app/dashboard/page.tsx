@@ -151,7 +151,7 @@ function SkillBar({
           className={`h-full border-r ${has ? "bg-[#0047FF] border-[#fff]" : "bg-[#FF2A00] border-[#000]"}`}
           initial={{ width: 0 }}
           animate={inView ? { width: `${score}%` } : {}}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
         />
       </div>
     </div>
@@ -229,7 +229,7 @@ function ShapChart() {
 
 /* ─── PAGE ─── */
 export default function DashboardPage() {
-  const fadeUp = {
+  const fadeUp: import("framer-motion").Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
   };
