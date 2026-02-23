@@ -101,8 +101,8 @@ export default function UploadPage() {
   );
 
   return (
-    <div className="min-h-screen structural-bg flex flex-col items-center justify-center px-6 py-24 pt-32 relative">
-      <div className="w-full max-w-[1400px] flex flex-col lg:flex-row gap-12 lg:gap-24 relative z-10 mx-auto items-center">
+    <div className="min-h-screen structural-bg flex flex-col items-center justify-center px-4 md:px-6 py-16 pt-24 md:py-24 md:pt-32 relative">
+      <div className="w-full max-w-[1400px] flex flex-col lg:flex-row gap-8 lg:gap-24 relative z-10 mx-auto items-center">
         {/* Left Side (Header & Info) */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -113,7 +113,7 @@ export default function UploadPage() {
           <div className="font-mono text-xs text-[#0047FF] font-bold uppercase mb-4 tracking-widest inline-flex border border-[#0047FF] px-2 py-1 bg-[#0047FF]/10">
             [ DATA INGESTION ]
           </div>
-          <h1 className="display-title text-5xl md:text-7xl mb-6 text-white text-balance uppercase leading-none">
+          <h1 className="display-title text-4xl sm:text-5xl md:text-7xl mb-6 text-white text-balance uppercase leading-none">
             UPLOAD <br />
             <span
               className="text-transparent"
@@ -174,7 +174,7 @@ export default function UploadPage() {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                className={`brutalist-card p-12 text-center cursor-pointer transition-colors relative overflow-hidden h-[400px] flex flex-col items-center justify-center ${
+                className={`brutalist-card p-6 md:p-12 text-center cursor-pointer transition-colors relative overflow-hidden h-[400px] flex flex-col items-center justify-center ${
                   state === "dragging"
                     ? "bg-[#0047FF]/5 border-[#0047FF]"
                     : "bg-[#050505]"
@@ -248,7 +248,7 @@ export default function UploadPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="brutalist-card p-12 text-center h-[400px] flex flex-col items-center justify-center bg-[#050505]"
+                className="brutalist-card p-6 md:p-12 text-center h-[400px] flex flex-col items-center justify-center bg-[#050505]"
               >
                 <div className="w-20 h-20 bg-[#0047FF] flex items-center justify-center mx-auto border border-black shadow-[4px_4px_0_#fff] mb-6 animate-pulse">
                   <FileText className="w-8 h-8 text-white" />
@@ -349,7 +349,7 @@ export default function UploadPage() {
                       animate={{ opacity: 1 }}
                       className="absolute inset-0 bg-[#D6FF00] flex flex-col items-center justify-center z-10 p-8 text-center"
                     >
-                      <h2 className="display-title text-4xl text-black uppercase leading-none mb-4">
+                      <h2 className="display-title text-3xl md:text-4xl text-black uppercase leading-none mb-4">
                         ANALYSIS
                         <br />
                         COMPLETE.

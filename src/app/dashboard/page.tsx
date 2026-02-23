@@ -86,7 +86,7 @@ function ScoreDisplay({ score }: { score: number }) {
         <div className="w-3 h-3 bg-black rounded-full animate-pulse" />
       </div>
       <div>
-        <div className="display-title text-[120px] leading-[0.8] tracking-tighter mb-2">
+        <div className="display-title text-7xl md:text-[120px] leading-[0.8] tracking-tighter mb-2">
           {displayed}
         </div>
         <div className="flex items-center gap-4">
@@ -235,8 +235,8 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen structural-bg pt-24 pb-20">
-      <div className="w-full max-w-[1400px] mx-auto px-6">
+    <div className="min-h-screen structural-bg pt-20 md:pt-24 pb-16 md:pb-20">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6">
         {/* Top Meta Bar */}
         <motion.div
           initial="hidden"
@@ -253,10 +253,10 @@ export default function DashboardPage() {
                 ID: 0x8F9B2A
               </span>
             </div>
-            <h1 className="display-title text-4xl text-white uppercase mb-2 leading-none">
+            <h1 className="display-title text-3xl md:text-4xl text-white uppercase mb-2 leading-none">
               {jobData.title}
             </h1>
-            <div className="font-mono text-xs text-[#888] uppercase flex items-center gap-4">
+            <div className="font-mono text-xs text-[#888] uppercase flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
               <span>[{jobData.location}]</span>
               <span className="text-[#0047FF]">[{jobData.salary}]</span>
             </div>
@@ -324,7 +324,7 @@ export default function DashboardPage() {
                 defaultValue="skills"
                 className="w-full brutalist-card bg-[#050505] p-0 overflow-hidden"
               >
-                <TabsList className="bg-black border-b border-[#222] w-full grid grid-cols-3 p-0 rounded-none h-auto">
+                <TabsList className="bg-black border-b border-[#222] w-full flex flex-col sm:grid sm:grid-cols-3 p-0 rounded-none h-auto">
                   <TabsTrigger
                     value="skills"
                     className="rounded-none border-r border-[#222] py-4 font-mono text-xs font-bold uppercase data-[state=active]:bg-[#0047FF] data-[state=active]:text-white"
@@ -346,7 +346,10 @@ export default function DashboardPage() {
                 </TabsList>
 
                 {/* MATRIX CONTENT */}
-                <TabsContent value="skills" className="p-8 m-0 focus-ring">
+                <TabsContent
+                  value="skills"
+                  className="p-6 md:p-8 m-0 focus-ring"
+                >
                   <h3 className="display-title text-3xl text-white mb-2 uppercase">
                     Skill Matrix
                   </h3>
@@ -361,7 +364,7 @@ export default function DashboardPage() {
                 </TabsContent>
 
                 {/* SHAP CONTENT */}
-                <TabsContent value="shap" className="p-8 m-0 focus-ring">
+                <TabsContent value="shap" className="p-6 md:p-8 m-0 focus-ring">
                   <h3 className="display-title text-3xl text-white mb-2 uppercase">
                     Influence Impact
                   </h3>
@@ -372,7 +375,10 @@ export default function DashboardPage() {
                 </TabsContent>
 
                 {/* COURSES CONTENT */}
-                <TabsContent value="courses" className="p-8 m-0 focus-ring">
+                <TabsContent
+                  value="courses"
+                  className="p-6 md:p-8 m-0 focus-ring"
+                >
                   <h3 className="display-title text-3xl text-white mb-2 uppercase">
                     Training Modules
                   </h3>
@@ -383,9 +389,9 @@ export default function DashboardPage() {
                     {courses.map((c) => (
                       <div
                         key={c.title}
-                        className="p-4 border border-[#222] bg-[#0A0A0A] hover:bg-[#111] transition-colors flex items-center justify-between group"
+                        className="p-4 border border-[#222] bg-[#0A0A0A] hover:bg-[#111] transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between group gap-4 sm:gap-0"
                       >
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4 sm:gap-6">
                           <span className="font-mono text-2xl font-black text-[#333] group-hover:text-[#666] transition-colors">
                             {c.icon}
                           </span>

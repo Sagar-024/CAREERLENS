@@ -43,8 +43,8 @@ function AnimatedSection({
 /* ─── HERO ─── */
 function Hero() {
   return (
-    <section className="relative min-h-[90vh] flex flex-col items-center justify-center overflow-hidden structural-bg pt-24 border-b border-[#222]">
-      <div className="w-full max-w-[1400px] mx-auto px-6 py-20 flex flex-col md:flex-row items-center gap-12 z-10">
+    <section className="relative min-h-[90vh] flex flex-col items-center justify-center overflow-hidden structural-bg pt-20 md:pt-24 border-b border-[#222]">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 py-12 md:py-20 flex flex-col lg:flex-row items-center gap-12 z-10">
         {/* Left Copy */}
         <AnimatedSection className="flex-1 max-w-2xl">
           <motion.div
@@ -56,7 +56,7 @@ function Hero() {
           </motion.div>
           <motion.h1
             variants={fadeUp}
-            className="display-title text-6xl md:text-8xl mb-6 text-balance text-white"
+            className="display-title text-5xl md:text-7xl lg:text-8xl mb-6 text-balance text-white"
           >
             KNOW YOUR <br />
             <span
@@ -128,7 +128,7 @@ function Hero() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="display-title text-6xl text-[#D6FF00] leading-none mb-1">
+                  <div className="display-title text-5xl sm:text-6xl text-[#D6FF00] leading-none mb-1">
                     94
                   </div>
                   <div className="font-mono text-[10px] uppercase text-[#666] tracking-widest">
@@ -255,10 +255,10 @@ function Features() {
   return (
     <section
       id="features"
-      className="py-32 w-full max-w-[1400px] mx-auto px-6 border-b border-[#222]"
+      className="py-20 md:py-32 w-full max-w-[1400px] mx-auto px-4 md:px-6 border-b border-[#222]"
     >
-      <AnimatedSection className="mb-20 max-w-3xl">
-        <h2 className="display-title text-5xl md:text-7xl mb-6 text-white text-balance">
+      <AnimatedSection className="mb-12 md:mb-20 max-w-3xl">
+        <h2 className="display-title text-4xl md:text-6xl lg:text-7xl mb-6 text-white text-balance">
           ELIMINATE THE <br />
           <span className="text-[#0047FF]">BLIND SPOTS.</span>
         </h2>
@@ -328,10 +328,10 @@ const steps = [
 
 function HowItWorks() {
   return (
-    <section className="py-32 w-full max-w-[1400px] mx-auto px-6 border-b border-[#222]">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+    <section className="py-20 md:py-32 w-full max-w-[1400px] mx-auto px-4 md:px-6 border-b border-[#222]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-16">
         <AnimatedSection className="lg:col-span-4">
-          <h2 className="display-title text-4xl mb-6 text-white text-balance">
+          <h2 className="display-title text-3xl md:text-4xl mb-6 text-white text-balance">
             PIPELINE <br />
             <span className="text-[#D6FF00]">EXECUTION.</span>
           </h2>
@@ -346,7 +346,7 @@ function HowItWorks() {
             <motion.div
               key={step.num}
               variants={fadeUp}
-              className="brutalist-card p-8 bg-[#050505]"
+              className="brutalist-card p-6 md:p-8 bg-[#050505]"
             >
               <div className="font-mono text-3xl font-black text-[#222] mb-4">
                 {step.num}
@@ -386,10 +386,10 @@ const testimonials = [
 
 function Testimonials() {
   return (
-    <section className="py-32 bg-[#D6FF00] border-b border-[#222]">
-      <div className="w-full max-w-[1400px] mx-auto px-6">
-        <AnimatedSection className="mb-16">
-          <h2 className="display-title text-5xl md:text-6xl text-black">
+    <section className="py-20 md:py-32 bg-[#D6FF00] border-b border-[#222]">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6">
+        <AnimatedSection className="mb-12 md:mb-16">
+          <h2 className="display-title text-4xl md:text-6xl text-black">
             DATA <br /> CONFIRMATION.
           </h2>
         </AnimatedSection>
@@ -453,11 +453,11 @@ function Pricing() {
   return (
     <section
       id="pricing"
-      className="py-32 structural-bg border-b border-[#222]"
+      className="py-20 md:py-32 structural-bg border-b border-[#222]"
     >
-      <div className="w-full max-w-[1400px] mx-auto px-6">
-        <AnimatedSection className="mb-16 text-center">
-          <h2 className="display-title text-5xl text-white mb-6 text-balance">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6">
+        <AnimatedSection className="mb-12 md:mb-16 text-center">
+          <h2 className="display-title text-4xl md:text-5xl text-white mb-6 text-balance">
             ACCESS TIERS.
           </h2>
           <p className="text-[#888] font-mono text-sm uppercase max-w-md mx-auto">
@@ -526,14 +526,14 @@ function Pricing() {
 /* ─── CTA BANNER ─── */
 function CTABanner() {
   return (
-    <section className="py-32 bg-black border-b border-[#222]">
-      <AnimatedSection className="w-full max-w-[1400px] mx-auto px-6 text-center">
+    <section className="py-20 md:py-32 bg-black border-b border-[#222]">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 text-center">
         <motion.div
           variants={fadeUp}
-          className="brutalist-card p-12 md:p-24 bg-[#050505] border-[#D6FF00] shadow-[8px_8px_0_#D6FF00] relative overflow-hidden"
+          className="brutalist-card p-8 md:p-12 lg:p-24 bg-[#050505] border-[#D6FF00] shadow-[8px_8px_0_#D6FF00] relative overflow-hidden"
         >
           <div className="scan-line-acid opacity-30" />
-          <h2 className="display-title text-5xl md:text-7xl text-white mb-6 text-balance relative z-10">
+          <h2 className="display-title text-4xl md:text-5xl lg:text-7xl text-white mb-6 text-balance relative z-10">
             SYSTEM TERMINAL <br />{" "}
             <span className="text-[#D6FF00]">AWAITING INPUT.</span>
           </h2>
@@ -551,7 +551,7 @@ function CTABanner() {
             </span>
           </Link>
         </motion.div>
-      </AnimatedSection>
+      </div>
     </section>
   );
 }

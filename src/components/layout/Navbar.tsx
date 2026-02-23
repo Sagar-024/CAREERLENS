@@ -25,7 +25,7 @@ export function Navbar() {
           : "bg-transparent"
       }`}
     >
-      <nav className="w-full px-6 h-16 flex items-center justify-between mx-auto max-w-[1400px]">
+      <nav className="w-full px-4 md:px-6 h-16 flex items-center justify-between mx-auto max-w-[1400px]">
         {/* LOGO */}
         <Link
           href="/"
@@ -114,7 +114,7 @@ export function Navbar() {
             exit={{ height: 0 }}
             className="md:hidden border-t-[1px] border-[#222] bg-black overflow-hidden"
           >
-            <div className="flex flex-col px-6 py-6 gap-6">
+            <div className="flex flex-col px-4 py-6 gap-6">
               {[
                 { href: "/", label: "Home" },
                 { href: "/upload", label: "Analyze" },

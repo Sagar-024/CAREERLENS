@@ -4,7 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 export function Footer() {
   return (
     <footer className="border-t-[1px] border-[#222] bg-black font-mono overflow-hidden">
-      <div className="w-full mx-auto max-w-[1400px] px-6 py-20 flex flex-col md:flex-row justify-between items-start gap-12">
+      <div className="w-full mx-auto max-w-[1400px] px-4 md:px-6 py-12 md:py-20 flex flex-col md:flex-row justify-between items-start gap-12">
         {/* BIG LOGO MARK */}
         <div className="space-y-6 max-w-sm">
           <div className="font-sans font-black text-4xl leading-none text-white tracking-tighter hover:text-[#D6FF00] transition-colors cursor-default">
@@ -82,7 +82,7 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="w-full mx-auto max-w-[1400px] px-6 py-6 flex flex-col md:flex-row items-center justify-between text-xs text-[#666] uppercase tracking-wider">
+      <div className="w-full mx-auto max-w-[1400px] px-4 md:px-6 py-6 flex flex-col md:flex-row items-center justify-between text-xs text-[#666] uppercase tracking-wider text-center md:text-left">
         <span>
           © {new Date().getFullYear()} CareerLens. Base level intelligence.
         </span>
