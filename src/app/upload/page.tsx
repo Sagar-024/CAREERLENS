@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Upload,
   FileText,
@@ -40,6 +41,7 @@ const terminalLines = [
 ];
 
 export default function UploadPage() {
+  const { data: session, status } = useSession();
   const [state, setState] = useState<UploadState>("idle");
   const [file, setFile] = useState<File | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -77,6 +79,54 @@ export default function UploadPage() {
   const handleFile = useCallback(
     async (f: File, isDemo = false) => {
       if (!f) return;
+
+      if (status === "unauthenticated") {
+        toast.error("AUTH_REQUIRED: Please login to execute scan.", {
+          position: "bottom-right",
+        });
+        setState("idle");
+        router.push("/login");
+        return;
+      }
+
+      const plan = (session?.user as any)?.plan || "FREE";
+      const usageCount = (session?.user as any)?.usageCount || 0;
+
+      if (plan === "FREE") {
+        toast.error(
+          "PAYMENT_REQUIRED: Analysis requires an active subscription. Upgrade to Basic for $9.",
+          {
+            position: "bottom-right",
+          },
+        );
+        setState("idle");
+        router.push("/#pricing");
+        return;
+      }
+
+      if (plan === "BASIC" && usageCount >= 10) {
+        toast.error(
+          "LIMIT_EXCEEDED: Basic allocation consumed. Upgrade to PRO for $49 for 30 scans.",
+          {
+            position: "bottom-right",
+          },
+        );
+        setState("idle");
+        router.push("/#pricing");
+        return;
+      }
+
+      if (plan === "PRO" && usageCount >= 30) {
+        toast.error(
+          "PLAN_EXHAUSTED: Pro allocation of 30 scans consumed. Contact support for Enterprise limits.",
+          {
+            position: "bottom-right",
+          },
+        );
+        setState("idle");
+        return;
+      }
+
       if (!isDemo && !jd.trim()) {
         toast.error("ERR_MISSING_DATA: Target Job Description Required.");
         return;
@@ -92,7 +142,7 @@ export default function UploadPage() {
       await new Promise((r) => setTimeout(r, 1000));
       simulateAnalysis();
     },
-    [simulateAnalysis, jd],
+    [simulateAnalysis, jd, status, session, router],
   );
 
   const onDrop = useCallback(

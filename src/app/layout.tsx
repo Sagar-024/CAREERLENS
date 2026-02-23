@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import Providers from "./providers";
 
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -34,13 +35,21 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
+    <html
+      lang="en"
+      className="dark"
+      style={{ colorScheme: "dark" }}
+      suppressHydrationWarning
+    >
       <body
         className={`${bricolage.variable} ${jetbrains.variable} font-sans noise-overlay antialiased bg-[#050505] text-[#F3F3F3]`}
+        suppressHydrationWarning
       >
-        <Navbar />
-        {children}
-        <Footer />
+        <Providers>
+          <Navbar />
+          {children}
+          <Footer />
+        </Providers>
         <Toaster
           toastOptions={{
             duration: 4000,

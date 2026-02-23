@@ -230,12 +230,34 @@ function ShapChart() {
   );
 }
 
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+
 /* ─── PAGE ─── */
 export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+
   const fadeUp: import("framer-motion").Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
   };
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen structural-bg pt-20 flex items-center justify-center">
+        <p className="font-mono text-[#888] uppercase animate-pulse">
+          Loading Identity...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen structural-bg pt-20 md:pt-24 pb-16 md:pb-20">
@@ -253,7 +275,7 @@ export default function DashboardPage() {
                 Live Report
               </span>
               <span className="font-mono text-xs text-[#888] uppercase">
-                ID: 0x8F9B2A
+                Welcome, {session?.user?.name || "Agent"}
               </span>
             </div>
             <h1 className="display-title text-3xl md:text-4xl text-white uppercase mb-2 leading-none">
@@ -271,8 +293,11 @@ export default function DashboardPage() {
             >
               [ RESCAN ]
             </Link>
-            <button className="brutalist-button h-12 px-6 flex-1 md:flex-none">
-              DEPLOY AGENT
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="brutalist-button h-12 px-6 flex-1 md:flex-none"
+            >
+              SIGN OUT
             </button>
           </div>
         </motion.div>

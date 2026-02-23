@@ -423,22 +423,22 @@ function Testimonials() {
 /* ─── PRICING ─── */
 const plans = [
   {
-    name: "Trial",
-    price: "$0",
+    name: "Basic",
+    price: "$9",
     metric: "MONTH",
     desc: "Bootstrap phase.",
-    features: ["3 Analyses", "Baseline Score", "PDF Export"],
+    features: ["10 Analyses", "Baseline Score", "PDF Export"],
     cta: "INITIALIZE",
     href: "/upload",
     primary: false,
   },
   {
     name: "Pro",
-    price: "$19",
+    price: "$49",
     metric: "MONTH",
     desc: "Active cycle.",
     features: [
-      "Unlimited Pipeline",
+      "30 Pipeline Scans",
       "Benchmarking",
       "Neural Rephrasing",
       "SHAP Matrix",
@@ -570,8 +570,8 @@ function CTABanner() {
               variants={terminalItem}
               className="text-[#888] text-lg lg:text-xl font-medium mb-12 max-w-xl mx-auto text-balance relative z-10"
             >
-              Transmit resume data for immediate analysis. First parsing cycle
-              is free.
+              Transmit resume data for immediate algorithmic analysis. Choose
+              your access tier to begin.
             </motion.p>
             <motion.div variants={terminalItem}>
               <Link

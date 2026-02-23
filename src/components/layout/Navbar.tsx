@@ -3,15 +3,19 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ArrowUpRight } from "lucide-react";
 
 export function Navbar() {
+  const { data: session, status } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
+    setMounted(true);
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -69,12 +73,24 @@ export function Navbar() {
 
         {/* CTA SECTION */}
         <div className="hidden md:flex items-center gap-6">
-          <Link
-            href="/upload"
-            className="text-[#888] hover:text-white transition-colors focus-ring p-1"
-          >
-            [ LOG IN ]
-          </Link>
+          {!mounted || status === "loading" ? (
+            <div className="w-16 h-4 bg-[#222] animate-pulse" />
+          ) : status === "authenticated" ? (
+            <Link
+              href="/dashboard"
+              className="text-[#888] hover:text-[#D6FF00] transition-colors focus-ring p-1 max-w-[160px] truncate"
+            >
+              [ {session?.user?.name?.split(" ")[0]?.toUpperCase() || "PROFILE"}{" "}
+              ]
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="text-[#888] hover:text-white transition-colors focus-ring p-1"
+            >
+              [ LOG IN ]
+            </Link>
+          )}
           <Link
             href="/upload"
             className="relative px-6 py-2 bg-[#0047FF] text-white font-sans font-bold flex items-center gap-2 overflow-hidden group focus-ring border border-[transparent] hover:border-white transition-colors"
