@@ -524,33 +524,68 @@ function Pricing() {
 }
 
 /* ─── CTA BANNER ─── */
+const terminalContainer: Variants = {
+  hidden: { opacity: 0, scale: 0.95, filter: "blur(10px)", y: 40 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    y: 0,
+    transition: {
+      duration: 0.8,
+      ease: [0.22, 1, 0.36, 1],
+      staggerChildren: 0.15,
+    },
+  },
+};
+
+const terminalItem: Variants = {
+  hidden: { opacity: 0, y: 20, filter: "blur(5px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
 function CTABanner() {
   return (
     <section className="py-20 md:py-32 bg-black border-b border-[#222]">
       <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 text-center">
-        <motion.div
-          variants={fadeUp}
-          className="brutalist-card p-8 md:p-12 lg:p-24 bg-[#050505] border-[#D6FF00] shadow-[8px_8px_0_#D6FF00] relative overflow-hidden"
-        >
-          <div className="scan-line-acid opacity-30" />
-          <h2 className="display-title text-4xl md:text-5xl lg:text-7xl text-white mb-6 text-balance relative z-10">
-            SYSTEM TERMINAL <br />{" "}
-            <span className="text-[#D6FF00]">AWAITING INPUT.</span>
-          </h2>
-          <p className="text-[#888] text-lg lg:text-xl font-medium mb-12 max-w-xl mx-auto text-balance relative z-10">
-            Transmit resume data for immediate analysis. First parsing cycle is
-            free.
-          </p>
-          <Link
-            href="/upload"
-            className="brutalist-button px-12 py-6 text-xl inline-flex items-center justify-center gap-4 focus-ring w-full sm:w-auto relative z-10"
+        <AnimatedSection>
+          <motion.div
+            variants={terminalContainer}
+            className="brutalist-card p-8 md:p-12 lg:p-24 bg-[#050505] border-[#D6FF00] shadow-[8px_8px_0_#D6FF00] relative overflow-hidden"
           >
-            EXECUTE{" "}
-            <span className="font-mono text-sm opacity-50 bg-black/20 px-2 py-0.5 rounded">
-              Enter ↵
-            </span>
-          </Link>
-        </motion.div>
+            <div className="scan-line-acid opacity-30" />
+            <motion.h2
+              variants={terminalItem}
+              className="display-title text-4xl md:text-5xl lg:text-7xl text-white mb-6 text-balance relative z-10"
+            >
+              SYSTEM TERMINAL <br />{" "}
+              <span className="text-[#D6FF00]">AWAITING INPUT.</span>
+            </motion.h2>
+            <motion.p
+              variants={terminalItem}
+              className="text-[#888] text-lg lg:text-xl font-medium mb-12 max-w-xl mx-auto text-balance relative z-10"
+            >
+              Transmit resume data for immediate analysis. First parsing cycle
+              is free.
+            </motion.p>
+            <motion.div variants={terminalItem}>
+              <Link
+                href="/upload"
+                className="brutalist-button px-12 py-6 text-xl inline-flex items-center justify-center gap-4 focus-ring w-full sm:w-auto relative z-10 group"
+              >
+                EXECUTE{" "}
+                <span className="font-mono text-sm opacity-50 bg-black/20 px-2 py-0.5 rounded group-hover:opacity-100 transition-opacity">
+                  Enter ↵
+                </span>
+              </Link>
+            </motion.div>
+          </motion.div>
+        </AnimatedSection>
       </div>
     </section>
   );

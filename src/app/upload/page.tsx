@@ -45,6 +45,7 @@ export default function UploadPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
+  const [jd, setJd] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -74,8 +75,12 @@ export default function UploadPage() {
   }, [router, startTerminal]);
 
   const handleFile = useCallback(
-    async (f: File) => {
+    async (f: File, isDemo = false) => {
       if (!f) return;
+      if (!isDemo && !jd.trim()) {
+        toast.error("ERR_MISSING_DATA: Target Job Description Required.");
+        return;
+      }
       const valid = f.type === "application/pdf" || f.name.endsWith(".docx");
       if (!valid) {
         toast.error("ERR_INVALID_FORMAT: Require PDF/DOCX");
@@ -87,7 +92,7 @@ export default function UploadPage() {
       await new Promise((r) => setTimeout(r, 1000));
       simulateAnalysis();
     },
-    [simulateAnalysis],
+    [simulateAnalysis, jd],
   );
 
   const onDrop = useCallback(
@@ -105,9 +110,13 @@ export default function UploadPage() {
       <div className="w-full max-w-[1400px] flex flex-col lg:flex-row gap-8 lg:gap-24 relative z-10 mx-auto items-center">
         {/* Left Side (Header & Info) */}
         <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0, x: -40, filter: "blur(10px)" }}
+          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+          transition={{
+            duration: 0.8,
+            ease: [0.22, 1, 0.36, 1],
+            staggerChildren: 0.1,
+          }}
           className="lg:w-1/2"
         >
           <div className="font-mono text-xs text-[#0047FF] font-bold uppercase mb-4 tracking-widest inline-flex border border-[#0047FF] px-2 py-1 bg-[#0047FF]/10">
@@ -171,10 +180,16 @@ export default function UploadPage() {
               state === "error") && (
               <motion.div
                 key="dropzone"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                className={`brutalist-card p-6 md:p-12 text-center cursor-pointer transition-colors relative overflow-hidden h-[400px] flex flex-col items-center justify-center ${
+                initial={{
+                  opacity: 0,
+                  y: 30,
+                  scale: 0.95,
+                  filter: "blur(10px)",
+                }}
+                animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -30, scale: 0.95, filter: "blur(10px)" }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className={`brutalist-card p-6 md:p-12 text-center transition-colors relative overflow-hidden min-h-[450px] flex flex-col items-center justify-center ${
                   state === "dragging"
                     ? "bg-[#0047FF]/5 border-[#0047FF]"
                     : "bg-[#050505]"
@@ -185,36 +200,71 @@ export default function UploadPage() {
                   setState("dragging");
                 }}
                 onDragLeave={() => setState("idle")}
-                onClick={() => inputRef.current?.click()}
               >
-                <div className="scan-line-acid opacity-20" />
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept=".pdf,.docx"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleFile(f);
-                  }}
-                />
+                <div className="scan-line-acid opacity-20 pointer-events-none" />
 
-                <motion.div
-                  animate={state === "dragging" ? { y: -5 } : { y: 0 }}
-                  className="mb-8"
+                {/* Job Description Block */}
+                <div
+                  className="w-full mb-8 text-left relative z-10"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="w-20 h-20 bg-[#D6FF00] flex items-center justify-center mx-auto border border-black shadow-[4px_4px_0_#fff]">
-                    <Upload className="w-8 h-8 text-black" />
-                  </div>
-                </motion.div>
+                  <label
+                    htmlFor="jd-input"
+                    className="font-mono text-[10px] text-[#888] uppercase mb-2 block font-bold tracking-widest"
+                  >
+                    Target Job Description (Required)
+                  </label>
+                  <textarea
+                    id="jd-input"
+                    value={jd}
+                    onChange={(e) => setJd(e.target.value)}
+                    placeholder="Provide URL or paste description for explicit comparison..."
+                    className="w-full bg-[#000] border border-[#222] text-white p-4 font-mono text-xs focus:border-[#0047FF] focus:ring-1 focus:ring-[#0047FF] focus:outline-none resize-none h-24 transition-colors placeholder:text-[#333]"
+                  />
+                </div>
 
-                <h2 className="text-2xl font-bold uppercase text-white mb-3 tracking-tight">
-                  {state === "dragging"
-                    ? "RELEASE PAYLOAD"
-                    : "DRAG RESUME HERE"}
-                </h2>
-                <div className="font-mono text-xs text-[#666] uppercase">
-                  OR BROWSE SYSTEM DIRECTORY
+                {/* Upload Block */}
+                <div
+                  className="w-full flex-1 flex flex-col items-center justify-center cursor-pointer border border-dashed border-[#222] hover:border-[#D6FF00] hover:bg-[#111] transition-colors py-8 group"
+                  onClick={() => inputRef.current?.click()}
+                >
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept=".pdf,.docx"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFile(f);
+                    }}
+                  />
+
+                  <motion.div
+                    animate={
+                      state === "dragging"
+                        ? { y: -10, scale: 1.05 }
+                        : { y: [0, -5, 0] }
+                    }
+                    transition={
+                      state === "dragging"
+                        ? { type: "spring", stiffness: 300 }
+                        : { repeat: Infinity, duration: 4, ease: "easeInOut" }
+                    }
+                    className="mb-8"
+                  >
+                    <div className="w-20 h-20 bg-[#D6FF00] flex items-center justify-center mx-auto border border-black shadow-[4px_4px_0_#fff] group-hover:scale-105 transition-transform">
+                      <Upload className="w-8 h-8 text-black" />
+                    </div>
+                  </motion.div>
+
+                  <h2 className="text-2xl font-bold uppercase text-white mb-2 tracking-tight">
+                    {state === "dragging"
+                      ? "RELEASE PAYLOAD"
+                      : "DRAG & DROP RESUME"}
+                  </h2>
+                  <div className="font-mono text-xs text-[#666] uppercase group-hover:text-[#D6FF00] transition-colors">
+                    OR CLICK TO BROWSE CPU
+                  </div>
                 </div>
 
                 {state === "error" && (
@@ -232,6 +282,7 @@ export default function UploadPage() {
                         new File(["demo"], "sys_demo_resume.pdf", {
                           type: "application/pdf",
                         }),
+                        true,
                       );
                     }}
                     className="text-[#0047FF] hover:text-[#D6FF00] font-mono text-xs uppercase tracking-widest flex items-center justify-center gap-2 mx-auto transition-colors"
@@ -245,10 +296,11 @@ export default function UploadPage() {
             {state === "uploading" && (
               <motion.div
                 key="uploading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="brutalist-card p-6 md:p-12 text-center h-[400px] flex flex-col items-center justify-center bg-[#050505]"
+                initial={{ opacity: 0, filter: "blur(10px)", scale: 0.95 }}
+                animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+                exit={{ opacity: 0, filter: "blur(10px)", scale: 0.95 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="brutalist-card p-6 md:p-12 text-center min-h-[450px] flex flex-col items-center justify-center bg-[#050505]"
               >
                 <div className="w-20 h-20 bg-[#0047FF] flex items-center justify-center mx-auto border border-black shadow-[4px_4px_0_#fff] mb-6 animate-pulse">
                   <FileText className="w-8 h-8 text-white" />
@@ -265,9 +317,10 @@ export default function UploadPage() {
             {(state === "analyzing" || state === "done") && (
               <motion.div
                 key="analyzing"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="brutalist-card p-0 overflow-hidden bg-[#050505] h-[450px] flex flex-col"
+                initial={{ opacity: 0, filter: "blur(10px)", scale: 0.98 }}
+                animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="brutalist-card p-0 overflow-hidden bg-[#050505] min-h-[450px] flex flex-col"
               >
                 {/* Terminal Header */}
                 <div className="border-b border-[#222] bg-black px-4 py-2 flex items-center justify-between">
@@ -345,8 +398,13 @@ export default function UploadPage() {
                 <AnimatePresence>
                   {state === "done" && (
                     <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
+                      initial={{
+                        opacity: 0,
+                        filter: "blur(10px)",
+                        scale: 1.05,
+                      }}
+                      animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                       className="absolute inset-0 bg-[#D6FF00] flex flex-col items-center justify-center z-10 p-8 text-center"
                     >
                       <h2 className="display-title text-3xl md:text-4xl text-black uppercase leading-none mb-4">

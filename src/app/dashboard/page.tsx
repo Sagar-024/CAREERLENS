@@ -78,9 +78,12 @@ function ScoreDisplay({ score }: { score: number }) {
   }, [score]);
 
   return (
-    <div className="brutalist-card bg-[#D6FF00] p-8 text-black flex flex-col justify-between border-black">
+    <div
+      className="brutalist-card p-8 flex flex-col justify-between"
+      style={{ backgroundColor: "#D6FF00", borderColor: "#000", color: "#000" }}
+    >
       <div className="flex justify-between items-start mb-8">
-        <span className="font-mono text-xs font-bold uppercase tracking-widest py-1 px-2 border border-black">
+        <span className="font-mono text-xs font-bold uppercase tracking-widest py-1 px-2 border border-black text-black">
           Analysis
         </span>
         <div className="w-3 h-3 bg-black rounded-full animate-pulse" />
