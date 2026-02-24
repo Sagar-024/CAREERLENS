@@ -136,28 +136,6 @@ export default function LoginPage() {
                 </>
               )}
             </button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-gray-200 dark:border-[#222]" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#fafafa] dark:bg-[#050505] px-2 text-gray-500 dark:text-[#666] font-mono font-bold dark:font-normal">
-                  Or
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                alert(
-                  "Enterprise SSO and Email Magic Links requires an upgraded organization plan. Please continue with Google for personal accounts.",
-                );
-              }}
-              className="w-full flex items-center justify-center gap-3 bg-transparent text-gray-500 dark:text-[#888] border border-gray-200 dark:border-[#222] px-4 py-3.5 font-medium hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-[#444] shadow-sm transition-colors"
-            >
-              Continue with Email
-            </button>
           </div>
 
           <p className="text-center text-xs text-gray-500 dark:text-[#666] max-w-xs mx-auto mt-12 transition-colors">
