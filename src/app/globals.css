@@ -89,18 +89,34 @@ body {
 }
 
 /* Structural CSS - Brutalist Edges */
+/* Light Mode Defaults */
 .brutalist-card {
-  background: var(--cl-bg);
-  border: 1px solid var(--cl-border);
-  box-shadow: 4px 4px 0px var(--cl-electric);
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.04);
   transition:
     transform 0.2s cubic-bezier(0.2, 0, 0, 1),
-    box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1);
+    box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1),
+    border-color 0.2s,
+    background-color 0.5s;
 }
 
 .brutalist-card:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0px var(--cl-acid);
+  transform: translate(-3px, -3px);
+  box-shadow: 8px 8px 0px var(--cl-electric);
+  border-color: #111827;
+}
+
+/* Dark Mode Defaults */
+.dark .brutalist-card {
+  background: var(--cl-bg);
+  border: 1px solid var(--cl-border);
+  box-shadow: 4px 4px 0px var(--cl-electric);
+}
+
+.dark .brutalist-card:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 8px 8px 0px var(--cl-acid);
   border-color: var(--cl-text);
 }
 

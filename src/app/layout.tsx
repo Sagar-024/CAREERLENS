@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import Providers from "./providers";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -35,29 +36,30 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className="dark"
-      style={{ colorScheme: "dark" }}
-      suppressHydrationWarning
-    >
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${bricolage.variable} ${jetbrains.variable} font-sans noise-overlay antialiased bg-[#050505] text-[#F3F3F3]`}
+        className={`${bricolage.variable} ${jetbrains.variable} font-sans noise-overlay antialiased bg-[#fafafa] dark:bg-[#050505] text-gray-900 dark:text-[#F3F3F3] transition-colors duration-300`}
         suppressHydrationWarning
       >
-        <Providers>
-          <Navbar />
-          {children}
-          <Footer />
-        </Providers>
-        <Toaster
-          toastOptions={{
-            duration: 4000,
-            className:
-              "brutalist-card !bg-black !text-white !border-white/20 !rounded-none",
-          }}
-          position="bottom-right"
-        />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          disableTransitionOnChange
+        >
+          <Providers>
+            <Navbar />
+            {children}
+            <Footer />
+          </Providers>
+          <Toaster
+            toastOptions={{
+              duration: 4000,
+              className:
+                "brutalist-card !bg-black !text-white !border-white/20 !rounded-none",
+            }}
+            position="bottom-right"
+          />
+        </ThemeProvider>
       </body>
     </html>
   );
