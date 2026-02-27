@@ -62,151 +62,59 @@ export default function UploadPage() {
     }
   }, []);
 
-  const simulateAnalysis = useCallback(async () => {
-    setState("analyzing");
-    await startTerminal();
+  const simulateAnalysis = useCallback(
+    async (uploadedFile: File) => {
+      setState("analyzing");
+      await startTerminal();
 
-    for (let i = 0; i < analysisSteps.length; i++) {
-      await new Promise((r) => setTimeout(r, 600 + Math.random() * 400));
-      setCurrentStep(i + 1);
-      setProgress(Math.round(((i + 1) / analysisSteps.length) * 100));
-    }
-
-    await new Promise((r) => setTimeout(r, 500));
-    setState("done");
-
-    // Aggressive Profile Mapping Logic
-    const inputLower = jd.toLowerCase();
-    let finalTitle = "";
-
-    // Mapping keys for AI detection - Expanded to support the 42+ roles
-    const profileMapping = [
-      {
-        role: "Data Analyst",
-        keys: ["data analyst", "analytics", "data visualization"],
-      },
-      { role: "Data Scientist", keys: ["data scientist", "data science"] },
-      {
-        role: "Software Engineer",
-        keys: ["software engineer", "software eng", "software developer"],
-      },
-      { role: "Product Manager", keys: ["product manager", "product owner"] },
-      {
-        role: "UX/UI Designer",
-        keys: ["designer", "ui/ux", "figma", "graphic designer"],
-      },
-      {
-        role: "DevOps Engineer",
-        keys: ["devops", "sre", "kubernetes", "docker"],
-      },
-      {
-        role: "Full Stack Developer",
-        keys: ["full stack", "fullstack", "mstack"],
-      },
-      {
-        role: "AI Engineer",
-        keys: [
-          "ai engineer",
-          "artificial intelligence",
-          "deep learning",
-          "nlp",
-          "neural",
-        ],
-      },
-      {
-        role: "Machine Learning Engineer",
-        keys: ["machine learning engineer", "ml engineer", "mlops"],
-      },
-      {
-        role: "Cloud Engineer",
-        keys: ["cloud engineer", "aws", "azure", "gp"],
-      },
-      {
-        role: "Cybersecurity Analyst",
-        keys: [
-          "cybersecurity",
-          "security analyst",
-          "soc analyst",
-          "ethical hacker",
-        ],
-      },
-      {
-        role: "Mobile App Developer",
-        keys: ["mobile developer", "android", "ios", "flutter", "react native"],
-      },
-      {
-        role: "Blockchain Developer",
-        keys: ["blockchain", "web3", "solidity", "ethereum"],
-      },
-      {
-        role: "Database Administrator",
-        keys: ["database administrator", "dba", "sql developer"],
-      },
-      {
-        role: "QA Engineer",
-        keys: ["qa engineer", "testing engineer", "automation tester"],
-      },
-      {
-        role: "HR Manager",
-        keys: ["hr manager", "human resources", "recruitment"],
-      },
-      {
-        role: "Sales Manager",
-        keys: ["sales manager", "business development", "account manager"],
-      },
-      {
-        role: "Project Manager",
-        keys: ["project manager", "pmp", "scrum master"],
-      },
-    ];
-
-    // Priority 1: Match against our intelligence list
-    for (const mapping of profileMapping) {
-      if (mapping.keys.some((k) => inputLower.includes(k))) {
-        finalTitle = mapping.role;
-        break;
-      }
-    }
-
-    // Priority 2: If no keyword match, check if input exactly matches or contains any role name from our matrix
-    if (!finalTitle) {
-      const { SKILL_MATRIX } = require("@/lib/skillsData");
-      const roles = Object.keys(SKILL_MATRIX);
-      for (const role of roles) {
-        if (inputLower.includes(role.toLowerCase())) {
-          finalTitle = role;
-          break;
+      // Start an interval to update progress to look cool
+      let simProgress = 0;
+      const progressInterval = setInterval(() => {
+        if (simProgress < 90) {
+          simProgress += 10;
+          setProgress(simProgress);
         }
+      }, 600);
+
+      try {
+        const formData = new FormData();
+        formData.append("resume", uploadedFile);
+        formData.append("jd_text", jd.trim());
+
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        clearInterval(progressInterval);
+        setProgress(100);
+
+        if (!res.ok) {
+          if (data.upgradeRequired) {
+            toast.error(data.error);
+            router.push("/#pricing");
+            return;
+          }
+          throw new Error(data.error || "Analysis failed");
+        }
+
+        await new Promise((r) => setTimeout(r, 500));
+        setState("done");
+        toast.success("SYSLOG: Analysis complete. Rerouting.");
+        await new Promise((r) => setTimeout(r, 1200));
+
+        router.push(`/results/${data.analysis_id}`);
+      } catch (err: any) {
+        clearInterval(progressInterval);
+        console.error(err);
+        toast.error(err.message || "Failed to analyze resume");
+        setState("error");
       }
-    }
-
-    // Priority 3: Fallback to truncation
-    if (!finalTitle) {
-      const words = jd.trim().split(/\s+/);
-      if (words.length <= 3) {
-        finalTitle = jd.trim();
-      } else {
-        finalTitle = words.slice(0, 3).join(" ") + "...";
-      }
-    }
-
-    // Safety limit
-    if (finalTitle.length > 50)
-      finalTitle = finalTitle.substring(0, 47) + "...";
-
-    localStorage.setItem(
-      "careerlens_job_data",
-      JSON.stringify({
-        title: finalTitle || "Untitled Position",
-        description: jd,
-        timestamp: Date.now(),
-      }),
-    );
-
-    toast.success("SYSLOG: Analysis complete. Rerouting.");
-    await new Promise((r) => setTimeout(r, 1200));
-    router.push("/dashboard");
-  }, [router, startTerminal, jd]);
+    },
+    [router, startTerminal, jd],
+  );
 
   const handleFile = useCallback(
     async (f: File, isDemo = false) => {
@@ -243,7 +151,7 @@ export default function UploadPage() {
       setFile(f);
       setState("uploading");
       await new Promise((r) => setTimeout(r, 1000));
-      simulateAnalysis();
+      simulateAnalysis(f);
     },
     [simulateAnalysis, jd, status, session, router],
   );
@@ -394,49 +302,79 @@ export default function UploadPage() {
                   />
                 </div>
 
-                {/* Upload Block */}
-                <div
-                  className="w-full flex-1 flex flex-col items-center justify-center cursor-pointer border border-dashed border-[#222] hover:border-[#D6FF00] hover:bg-[#111] transition-colors py-8 group"
-                  onClick={() => inputRef.current?.click()}
-                >
-                  <input
-                    ref={inputRef}
-                    type="file"
-                    accept=".pdf,.docx"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleFile(f);
-                    }}
-                  />
-
-                  <motion.div
-                    animate={
-                      state === "dragging"
-                        ? { y: -10, scale: 1.05 }
-                        : { y: [0, -5, 0] }
-                    }
-                    transition={
-                      state === "dragging"
-                        ? { type: "spring", stiffness: 300 }
-                        : { repeat: Infinity, duration: 4, ease: "easeInOut" }
-                    }
-                    className="mb-8"
+                {/* Upload Block or Selected File */}
+                {!file ? (
+                  <div
+                    className="w-full flex-1 flex flex-col items-center justify-center cursor-pointer border border-dashed border-[#222] hover:border-[#D6FF00] hover:bg-[#111] transition-colors py-8 group"
+                    onClick={() => inputRef.current?.click()}
                   >
-                    <div className="w-20 h-20 bg-[#D6FF00] flex items-center justify-center mx-auto border border-black shadow-[4px_4px_0_#fff] group-hover:scale-105 transition-transform">
-                      <Upload className="w-8 h-8 text-black" />
-                    </div>
-                  </motion.div>
+                    <input
+                      ref={inputRef}
+                      type="file"
+                      accept=".pdf,.docx"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleFile(f);
+                      }}
+                    />
 
-                  <h2 className="text-2xl font-bold uppercase text-white mb-2 tracking-tight">
-                    {state === "dragging"
-                      ? "RELEASE PAYLOAD"
-                      : "DRAG & DROP RESUME"}
-                  </h2>
-                  <div className="font-mono text-xs text-[#666] uppercase group-hover:text-[#D6FF00] transition-colors">
-                    OR CLICK TO BROWSE CPU
+                    <motion.div
+                      animate={
+                        state === "dragging"
+                          ? { y: -10, scale: 1.05 }
+                          : { y: [0, -5, 0] }
+                      }
+                      transition={
+                        state === "dragging"
+                          ? { type: "spring", stiffness: 300 }
+                          : { repeat: Infinity, duration: 4, ease: "easeInOut" }
+                      }
+                      className="mb-8"
+                    >
+                      <div className="w-20 h-20 bg-[#D6FF00] flex items-center justify-center mx-auto border border-black shadow-[4px_4px_0_#fff] group-hover:scale-105 transition-transform">
+                        <Upload className="w-8 h-8 text-black" />
+                      </div>
+                    </motion.div>
+
+                    <h2 className="text-2xl font-bold uppercase text-white mb-2 tracking-tight">
+                      {state === "dragging"
+                        ? "RELEASE PAYLOAD"
+                        : "DRAG & DROP RESUME"}
+                    </h2>
+                    <div className="font-mono text-xs text-[#666] uppercase group-hover:text-[#D6FF00] transition-colors">
+                      OR CLICK TO BROWSE CPU
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="w-full flex-1 flex flex-col items-center justify-center border border-dashed border-[#0047FF] bg-[#0047FF]/5 py-8 group relative">
+                    <div className="w-16 h-16 bg-[#0047FF] flex items-center justify-center mx-auto border border-[#0047FF] shadow-[4px_4px_0_#fff] mb-6">
+                      <FileText className="w-8 h-8 text-white" />
+                    </div>
+
+                    <h2 className="text-xl font-bold uppercase text-white mb-2 tracking-tight">
+                      RESUME ACQUIRED
+                    </h2>
+                    <div className="font-mono text-xs text-[#0047FF] uppercase truncate max-w-[200px]">
+                      {file.name}
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFile(null);
+                        setState("idle");
+                        if (inputRef.current) inputRef.current.value = "";
+                      }}
+                      className="absolute top-4 right-4 text-[#888] hover:text-[#FF2A00] transition-colors"
+                      title="Remove File"
+                    >
+                      <span className="font-mono text-xs uppercase px-2 py-1 border border-[#333] hover:border-[#FF2A00]">
+                        [ CLEAR ]
+                      </span>
+                    </button>
+                  </div>
+                )}
 
                 {state === "error" && (
                   <div className="mt-6 flex items-center justify-center gap-2 p-2 bg-[#FF2A00]/10 border border-[#FF2A00] text-[#FF2A00] font-mono text-xs uppercase w-full">
