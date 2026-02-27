@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion, useInView, Variants } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Check, TrendingUp, Cpu, Server, Lock } from "lucide-react";
@@ -137,7 +137,7 @@ function Hero() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="display-title text-5xl sm:text-6xl text-[#0047FF] dark:text-[#D6FF00] leading-none mb-1">
+                  <div className="display-title text-5xl sm:text-6xl text-[#0047FF] dark:text-[#D6FF00] leading-none mb-1 tabular-nums">
                     94
                   </div>
                   <div className="font-mono text-[10px] uppercase text-gray-400 dark:text-[#666] tracking-widest font-bold dark:font-normal">
@@ -648,11 +648,11 @@ export default function LandingPage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   // Expose opening the modal from anywhere via an event
-  if (typeof document !== "undefined") {
-    document.addEventListener("open-login-modal", () =>
-      setIsLoginModalOpen(true),
-    );
-  }
+  useEffect(() => {
+    const handleOpen = () => setIsLoginModalOpen(true);
+    document.addEventListener("open-login-modal", handleOpen);
+    return () => document.removeEventListener("open-login-modal", handleOpen);
+  }, []);
 
   return (
     <main className="bg-white dark:bg-black transition-colors duration-500">

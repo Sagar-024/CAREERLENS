@@ -19,18 +19,21 @@ export function Footer() {
             <div className="flex gap-4">
               <a
                 href="#"
+                aria-label="Twitter / X"
                 className="w-10 h-10 border-2 border-gray-200 dark:border-[#222] flex items-center justify-center text-gray-600 dark:text-white hover:text-white dark:hover:text-black hover:bg-[#0047FF] dark:hover:bg-[#D6FF00] hover:border-[#0047FF] dark:hover:border-transparent transition-colors focus-ring"
               >
                 <Twitter className="w-4 h-4" />
               </a>
               <a
                 href="#"
+                aria-label="GitHub"
                 className="w-10 h-10 border-2 border-gray-200 dark:border-[#222] flex items-center justify-center text-gray-600 dark:text-white hover:text-white dark:hover:text-black hover:bg-[#0047FF] dark:hover:bg-[#D6FF00] hover:border-[#0047FF] dark:hover:border-transparent transition-colors focus-ring"
               >
                 <Github className="w-4 h-4" />
               </a>
               <a
                 href="#"
+                aria-label="LinkedIn"
                 className="w-10 h-10 border-2 border-gray-200 dark:border-[#222] flex items-center justify-center text-gray-600 dark:text-white hover:text-white dark:hover:text-black hover:bg-[#0047FF] dark:hover:bg-[#D6FF00] hover:border-[#0047FF] dark:hover:border-transparent transition-colors focus-ring"
               >
                 <Linkedin className="w-4 h-4" />

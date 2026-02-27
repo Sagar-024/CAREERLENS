@@ -19,15 +19,26 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   callbacks: {
-    async session({ session, user }) {
+    async jwt({ token, user, account }) {
+      if (user) {
+        token.id = user.id;
+        token.tier = (user as any).tier ?? "free";
+        token.analysisCount = (user as any).analysisCount ?? 0;
+      }
+      return token;
+    },
+    async session({ session, token }) {
       if (session.user) {
-        session.user.id = user.id;
+        session.user.id = token.id as string;
+        
+        // Fetch fresh data from DB periodically, or rely on token
         const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
+          where: { id: token.id as string },
           select: { tier: true, analysisCount: true },
         });
-        session.user.tier = dbUser?.tier ?? "free";
-        session.user.analysisCount = dbUser?.analysisCount ?? 0;
+        
+        session.user.tier = dbUser?.tier ?? token.tier ?? "free";
+        session.user.analysisCount = dbUser?.analysisCount ?? token.analysisCount ?? 0;
       }
       return session;
     },
@@ -37,7 +48,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   session: {
-    strategy: "database",
+    strategy: "jwt",
   },
 };
 

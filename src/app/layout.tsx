@@ -30,6 +30,17 @@ export const metadata: Metadata = {
     "neo brutulism",
     "career engineering",
   ],
+  openGraph: {
+    title: "CareerLens AI — Algorithmic Resume Intelligence",
+    description:
+      "Analyze your resume against ATS algorithms in real-time. Uncover blind spots and fix your application before submission.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CareerLens AI",
+    description: "Analyze your resume against ATS algorithms in real-time.",
+  },
 };
 
 export default function RootLayout({

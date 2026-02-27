@@ -1,0 +1,74 @@
+[
+    {
+        "skill": "machine learning",
+        "title": "Machine Learning Specialization",
+        "platform": "Coursera",
+        "link": "https://coursera.org/specializations/machine-learning-introduction",
+        "level": "Intermediate",
+        "duration": "4 weeks"
+    },
+    {
+        "skill": "python",
+        "title": "100 Days of Code: Complete Python Bootcamp",
+        "platform": "Udemy",
+        "link": "https://www.udemy.com/course/100-days-of-code/",
+        "level": "Beginner",
+        "duration": "100 days"
+    },
+    {
+        "skill": "docker",
+        "title": "Docker for Absolute Beginners",
+        "platform": "Coursera",
+        "link": "https://coursera.org",
+        "level": "Beginner",
+        "duration": "2 weeks"
+    },
+    {
+        "skill": "kubernetes",
+        "title": "Kubernetes for Developers",
+        "platform": "Pluralsight",
+        "link": "https://pluralsight.com",
+        "level": "Intermediate",
+        "duration": "4 weeks"
+    },
+    {
+        "skill": "aws",
+        "title": "AWS Certified Solutions Architect",
+        "platform": "A Cloud Guru",
+        "link": "https://acloudguru.com",
+        "level": "Advanced",
+        "duration": "8 weeks"
+    },
+    {
+        "skill": "sql",
+        "title": "PostgreSQL Bootcamp",
+        "platform": "Udemy",
+        "link": "https://udemy.com",
+        "level": "Beginner",
+        "duration": "3 weeks"
+    },
+    {
+        "skill": "leadership",
+        "title": "Team Leadership 101",
+        "platform": "LinkedIn Learning",
+        "link": "https://linkedin.com/learning",
+        "level": "Intermediate",
+        "duration": "1 week"
+    },
+    {
+        "skill": "agile",
+        "title": "Agile Crash Course",
+        "platform": "Udemy",
+        "link": "https://udemy.com",
+        "level": "Beginner",
+        "duration": "2 days"
+    },
+    {
+        "skill": "system design",
+        "title": "Grokking the System Design Interview",
+        "platform": "Educative",
+        "link": "https://educative.io",
+        "level": "Advanced",
+        "duration": "Self-paced"
+    }
+]
