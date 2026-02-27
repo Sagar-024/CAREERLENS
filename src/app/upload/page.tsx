@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
+import LoginModal from "@/components/ui/LoginModal";
 
 type UploadState =
   | "idle"
@@ -48,6 +49,8 @@ export default function UploadPage() {
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   const [jd, setJd] = useState("");
+  const [charCount, setCharCount] = useState(0);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -145,11 +148,30 @@ export default function UploadPage() {
   const handleFile = useCallback(
     async (f: File, isDemo = false) => {
       if (!f) return;
+      if (status === "unauthenticated") {
+        setIsLoginModalOpen(true);
+        return;
+      }
+
+      const tier = (session?.user as any)?.tier || "free";
+      const analysisCount = (session?.user as any)?.analysisCount || 0;
+
+      if (tier === "free" && analysisCount >= 2) {
+        toast.error("Free limit reached. Upgrade to Pro for unlimited scans.");
+        router.push("/#pricing");
+        return;
+      }
       if (!isDemo && !jd.trim()) {
         toast.error("ERR_MISSING_DATA: Target Job Description Required.");
         return;
       }
-      const valid = f.type === "application/pdf" || f.name.endsWith(".docx");
+      const fileName = f.name.toLowerCase();
+      const valid =
+        f.type === "application/pdf" ||
+        fileName.endsWith(".pdf") ||
+        fileName.endsWith(".docx") ||
+        f.type ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
       if (!valid) {
         toast.error("ERR_INVALID_FORMAT: Require PDF/DOCX");
         setState("error");
@@ -160,7 +182,7 @@ export default function UploadPage() {
       await new Promise((r) => setTimeout(r, 1000));
       simulateAnalysis();
     },
-    [simulateAnalysis, jd],
+    [simulateAnalysis, jd, status, session, router],
   );
 
   const onDrop = useCallback(
@@ -238,6 +260,23 @@ export default function UploadPage() {
               </div>
             ))}
           </div>
+          {/* Usage badge */}
+          {status === "authenticated" && (
+            <div className="mt-8 inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-[#222] rounded-lg shadow-sm dark:shadow-none w-fit">
+              <div className="flex gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-2 h-2 rounded-sm ${i < ((session?.user as any)?.usageCount || 0) ? "bg-[#FF2A00]" : "bg-gray-200 dark:bg-[#333]"}`}
+                  />
+                ))}
+              </div>
+              <span className="font-mono text-[10px] text-gray-500 dark:text-[#aaa] uppercase font-bold dark:font-normal">
+                {2 - Math.min(2, (session?.user as any)?.analysisCount || 0)}{" "}
+                free scans left
+              </span>
+            </div>
+          )}
         </motion.div>
 
         {/* Right Side (Uploader / Terminal) */}
@@ -342,24 +381,45 @@ export default function UploadPage() {
                     </div>
                   )}
 
-                  <div className="mt-8 border-t border-[#222] w-full pt-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleFile(
-                          new File(["demo"], "sys_demo_resume.pdf", {
-                            type: "application/pdf",
-                          }),
-                          true,
-                        );
-                      }}
-                      className="text-[#0047FF] hover:text-[#D6FF00] font-mono text-xs uppercase tracking-widest flex items-center justify-center gap-2 mx-auto transition-colors"
-                    >
-                      [ EXECUTE DEMO FILE ] <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
+                  {/* Analyze Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (file) {
+                        handleFile(file);
+                      } else {
+                        toast.error("Please upload your resume first.");
+                      }
+                    }}
+                    disabled={!file}
+                    className={`w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-black dark:font-bold text-sm uppercase tracking-wider transition-all duration-300 ${
+                      file
+                        ? "bg-black text-white hover:bg-gray-800 hover:shadow-lg dark:bg-[#D6FF00] dark:text-black dark:hover:bg-[#c4eb00] dark:hover:shadow-[0_0_40px_rgba(214,255,0,0.2)]"
+                        : "bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-[#888] cursor-not-allowed border border-gray-200 dark:border-[#3a3a3a]"
+                    }`}
+                  >
+                    {file ? (
+                      <>
+                        Analyze My Resume
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    ) : (
+                      "Upload Resume to Continue"
+                    )}
+                  </button>
+
+                  <p className="text-center text-gray-500 dark:text-[#888] text-xs font-mono uppercase tracking-wider font-bold dark:font-normal">
+                    Free plan —{" "}
+                    {2 -
+                      Math.min(
+                        2,
+                        (session?.user as any)?.analysisCount || 0,
+                      )}{" "}
+                    scans remaining
+                  </p>
+                </div>
+              </motion.div>
+            )}
 
             {state === "uploading" && (
               <motion.div
@@ -491,6 +551,10 @@ export default function UploadPage() {
           </AnimatePresence>
         </div>
       </div>
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
     </div>
   );
 }

@@ -1,11 +1,12 @@
-import NextAuth from "next-auth";
+import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
+import NextAuth from "next-auth/next";
 
 const prisma = new PrismaClient();
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -19,20 +20,27 @@ const handler = NextAuth({
   },
   callbacks: {
     async session({ session, user }) {
-      if (session?.user && user?.id) {
-        // @ts-ignore
+      if (session.user) {
         session.user.id = user.id;
-        // @ts-ignore
-        session.user.plan = (user as any).plan || "FREE";
-        // @ts-ignore
-        session.user.usageCount = (user as any).usageCount || 0;
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { tier: true, analysisCount: true },
+        });
+        session.user.tier = dbUser?.tier ?? "free";
+        session.user.analysisCount = dbUser?.analysisCount ?? 0;
       }
       return session;
     },
     async redirect({ url, baseUrl }) {
-      return baseUrl + "/dashboard";
+      if (url.startsWith(baseUrl)) return url;
+      return baseUrl + "/upload";
     },
   },
-});
+  session: {
+    strategy: "database",
+  },
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

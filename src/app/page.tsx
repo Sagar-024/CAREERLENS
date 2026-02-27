@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { motion, useInView, Variants } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Check, TrendingUp, Cpu, Server, Lock } from "lucide-react";
+import LoginModal from "@/components/ui/LoginModal";
 
 /* ─── Animation Variants ─── */
 const fadeUp: Variants = {
@@ -59,7 +60,7 @@ function Hero() {
             variants={fadeUp}
             className="display-title text-4xl md:text-5xl lg:text-6xl mb-6 text-balance text-gray-900 dark:text-white font-extrabold tracking-tight leading-none"
           >
-            KNOW EXACTLY HOW READY YOU ARE <br />
+            KNOW EXACTLY WHY YOU KEEP GETTING <br />
             <span
               className="text-transparent"
               style={{ WebkitTextStroke: "2px currentColor" }}
@@ -67,7 +68,7 @@ function Hero() {
               // Using inline style specifically targeting dark mode overrides via CSS variables or standard Tailwind classes
             >
               <span className="text-gray-900 dark:text-[#D6FF00] webkit-text-stroke-magic">
-                FOR YOUR TARGET JOB.
+                REJECTED.
               </span>
             </span>
           </motion.h1>
@@ -75,27 +76,31 @@ function Hero() {
             variants={fadeUp}
             className="text-xl text-gray-600 dark:text-[#888] mb-10 leading-relaxed text-balance font-medium"
           >
-            Upload your resume, paste a job description. We extract skills from
-            both, compare them using SBERT semantic AI, and tell you your exact
-            readiness score, which skills are missing, and which courses to
-            take.
+            Paste any job description. Upload your resume. Get your exact
+            readiness score in 60 seconds.
           </motion.p>
           <motion.div
             variants={fadeUp}
-            className="flex flex-col sm:flex-row gap-4"
+            className="flex flex-col sm:flex-row gap-4 items-center"
           >
-            <Link
-              href="/upload"
+            <button
+              onClick={() =>
+                document.dispatchEvent(new CustomEvent("open-login-modal"))
+              }
               className="px-8 py-5 text-lg inline-flex items-center justify-center gap-3 w-full sm:w-auto focus-ring bg-[#0047FF] dark:bg-[#D6FF00] text-white dark:text-black font-bold uppercase transition-transform hover:-translate-y-1 hover:shadow-xl shadow-[4px_4px_0_rgba(0,0,0,0.1)] dark:shadow-[4px_4px_0_#fff]"
             >
-              ANALYZE MY RESUME <ArrowRight className="w-6 h-6" />
-            </Link>
-            <Link
-              href="/dashboard"
-              className="px-8 py-5 text-lg font-bold uppercase text-gray-900 dark:text-white border border-gray-300 dark:border-[#222] bg-white dark:bg-black hover:bg-gray-50 dark:hover:bg-[#111] transition-colors inline-flex items-center justify-center w-full sm:w-auto focus-ring"
+              GET MY SCORE FREE <ArrowRight className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => {
+                document
+                  .getElementById("features")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="px-8 py-5 text-lg font-bold uppercase text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors inline-flex items-center justify-center w-full sm:w-auto"
             >
-              VIEW LIVE DEMO
-            </Link>
+              See how it works →
+            </button>
           </motion.div>
           <motion.div
             variants={fadeUp}
@@ -620,15 +625,17 @@ function CTABanner() {
               close the gap.
             </motion.p>
             <motion.div variants={terminalItem}>
-              <Link
-                href="/upload"
+              <button
+                onClick={() =>
+                  document.dispatchEvent(new CustomEvent("open-login-modal"))
+                }
                 className="px-12 py-6 text-xl inline-flex items-center justify-center gap-4 focus-ring w-full sm:w-auto relative z-10 group bg-[#0047FF] dark:bg-[#D6FF00] text-white dark:text-black font-black dark:font-bold border-2 border-transparent uppercase transition-transform hover:-translate-y-1 hover:shadow-xl shadow-[4px_4px_0_rgba(0,0,0,0.1)] dark:shadow-[4px_4px_0_#fff]"
               >
-                EXECUTE{" "}
+                GET MY SCORE FREE{" "}
                 <span className="font-mono text-sm opacity-50 bg-black/20 px-2 py-0.5 rounded group-hover:opacity-100 transition-opacity">
                   Enter ↵
                 </span>
-              </Link>
+              </button>
             </motion.div>
           </motion.div>
         </AnimatedSection>
@@ -638,6 +645,15 @@ function CTABanner() {
 }
 
 export default function LandingPage() {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  // Expose opening the modal from anywhere via an event
+  if (typeof document !== "undefined") {
+    document.addEventListener("open-login-modal", () =>
+      setIsLoginModalOpen(true),
+    );
+  }
+
   return (
     <main className="bg-white dark:bg-black transition-colors duration-500">
       <Hero />
@@ -647,6 +663,11 @@ export default function LandingPage() {
       <Testimonials />
       <Pricing />
       <CTABanner />
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
     </main>
   );
 }
