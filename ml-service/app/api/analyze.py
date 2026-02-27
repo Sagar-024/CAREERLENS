@@ -35,7 +35,7 @@ async def analyze_resume(
         match_results = semantic_matcher.match_skills(resume_skills, jd_skills)
         
         # 4. Calculate Score
-        final_score, readiness_label = score_calculator.calculate_score(match_results)
+        final_score, readiness_label = score_calculator.calculate_score(match_results, total_jd_skills=len(jd_skills))
         
         # 5. Gap Analysis
         missing_skills = gap_analyzer.identify_gaps(jd_skills, match_results)

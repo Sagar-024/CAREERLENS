@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { Navbar } from "@/components/layout/Navbar";
@@ -7,39 +7,45 @@ import { Footer } from "@/components/layout/Footer";
 import Providers from "./providers";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const bricolage = Bricolage_Grotesque({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
+  weight: ["300", "400", "500"],
   variable: "--font-mono",
   display: "swap",
 });
 
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "CareerLens AI — Algorithmic Resume Intelligence",
+  title:
+    "CareerLens AI — Know exactly why your resume isn't getting interviews",
   description:
-    "Analyze your resume against ATS algorithms in real-time. Uncover blind spots, compute benchmark scores, and fix your application before submission.",
+    "Paste a job description, upload your resume. Our AI shows your ATS readiness score, skill gaps, and personalized recommendations in 30 seconds.",
   keywords: [
     "resume",
     "AI",
     "ATS analysis",
-    "neo brutulism",
-    "career engineering",
+    "career",
+    "job search",
+    "skills gap",
   ],
   openGraph: {
-    title: "CareerLens AI — Algorithmic Resume Intelligence",
+    title: "CareerLens AI — Know your resume score in 30 seconds",
     description:
-      "Analyze your resume against ATS algorithms in real-time. Uncover blind spots and fix your application before submission.",
+      "See your exact ATS readiness score and skill gaps against any job description.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "CareerLens AI",
-    description: "Analyze your resume against ATS algorithms in real-time.",
+    description:
+      "Analyze your resume against any job description in 30 seconds.",
   },
 };
 
@@ -48,8 +54,20 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Satoshi font from FontShare */}
+        <link
+          href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap"
+          rel="stylesheet"
+        />
+        {/* Playfair Display for editorial headlines */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body
-        className={`${bricolage.variable} ${jetbrains.variable} font-sans noise-overlay antialiased bg-[#fafafa] dark:bg-[#050505] text-gray-900 dark:text-[#F3F3F3] transition-colors duration-300`}
+        className={`${jetbrains.variable} ${playfair.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
         <ThemeProvider
@@ -59,14 +77,19 @@ export default function RootLayout({
         >
           <Providers>
             <Navbar />
+            <div className="h-28" aria-hidden="true" />
             {children}
             <Footer />
           </Providers>
           <Toaster
             toastOptions={{
               duration: 4000,
-              className:
-                "brutalist-card !bg-black !text-white !border-white/20 !rounded-none",
+              classNames: {
+                toast:
+                  "!bg-[#111113] !border-[#1c1c1f] !text-[#fafaf9] !rounded-xl !text-sm",
+                success: "!border-[#7fb685]/40",
+                error: "!border-[#e05c4d]/40",
+              },
             }}
             position="bottom-right"
           />

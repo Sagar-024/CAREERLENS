@@ -4,192 +4,192 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ArrowUpRight, Sun, Moon } from "lucide-react";
+import { Menu, X, ArrowUpRight } from "lucide-react";
 
 export function Navbar() {
-  const { theme, setTheme } = useTheme();
   const { data: session, status } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
-    setMounted(true);
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 16);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const navLinks = [
+    { href: "/", label: "Home" },
+    { href: "/upload", label: "Analyze" },
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/#pricing", label: "Pricing" },
+  ];
+
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 font-mono text-sm uppercase ${
-        scrolled
-          ? "bg-white/95 dark:bg-black/95 backdrop-blur-md border-b-[1px] border-gray-200 dark:border-[#222]"
-          : "bg-transparent"
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled ? "backdrop-blur-xl border-b" : ""
       }`}
+      style={{
+        background: scrolled ? "rgba(9, 9, 11, 0.85)" : "transparent",
+        borderColor: scrolled ? "var(--border)" : "transparent",
+      }}
     >
-      <nav className="w-full px-4 md:px-6 h-16 flex items-center justify-between mx-auto max-w-[1400px]">
-        {/* LOGO */}
+      <nav className="max-w-6xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
+        {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 group focus-ring p-1"
+          className="flex items-center gap-2.5 focus-ring rounded-lg"
           aria-label="CareerLens AI Home"
         >
-          <div className="w-6 h-6 bg-[#0047FF] dark:bg-[#D6FF00] font-sans font-black text-white dark:text-black text-xs flex items-center justify-center -rotate-6 group-hover:rotate-0 transition-transform">
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
+            style={{ background: "var(--accent)", color: "#09090b" }}
+          >
             CL
           </div>
-          <span className="font-sans font-black dark:font-bold text-lg tracking-tight text-gray-900 dark:text-white group-hover:text-[#0047FF] dark:group-hover:text-[#D6FF00] transition-colors">
-            CAREERLENS
+          <span
+            className="font-bold text-base tracking-tight"
+            style={{ color: "var(--text)" }}
+          >
+            CareerLens
           </span>
         </Link>
 
-        {/* DESKTOP NAV */}
-        <div className="hidden md:flex items-center gap-8">
-          {[
-            { href: "/", label: "Home" },
-            { href: "/upload", label: "Analyze" },
-            { href: "/dashboard", label: "Dashboard" },
-            { href: "/#pricing", label: "Pricing" },
-          ].map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`relative py-1 group focus-ring transition-colors tracking-tight font-bold dark:font-medium ${
-                pathname === link.href
-                  ? "text-[#0047FF] dark:text-[#D6FF00]"
-                  : "text-gray-500 hover:text-gray-900 dark:text-[#888] dark:hover:text-white"
-              }`}
-            >
-              {link.label}
-              <span
-                className={`absolute left-0 bottom-0 h-[1px] bg-[#0047FF] dark:bg-[#D6FF00] transition-all duration-300 ${
-                  pathname === link.href ? "w-full" : "w-0 group-hover:w-full"
-                }`}
-              />
-            </Link>
-          ))}
+        {/* Desktop Nav */}
+        <div className="hidden md:flex items-center gap-0.5">
+          {navLinks.map((link) => {
+            const active = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="relative px-3.5 py-2 rounded-lg text-[13px] font-medium transition-colors focus-ring"
+                style={{
+                  color: active ? "var(--text)" : "var(--text-muted)",
+                }}
+              >
+                {link.label}
+                {active && (
+                  <motion.div
+                    layoutId="nav-active"
+                    className="absolute inset-0 rounded-lg -z-10"
+                    style={{ background: "var(--bg-elevated)" }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </Link>
+            );
+          })}
         </div>
 
-        {/* CTA SECTION */}
-        <div className="hidden md:flex items-center gap-6">
-          {/* THEME TOGGLE */}
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="p-2 text-gray-500 hover:text-gray-900 dark:text-[#888] dark:hover:text-white transition-colors focus-ring"
-            aria-label="Toggle theme"
-          >
-            {mounted &&
-              (theme === "dark" ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              ))}
-          </button>
-
-          {!mounted || status === "loading" ? (
-            <div className="w-16 h-4 bg-gray-200 dark:bg-[#222] animate-pulse" />
-          ) : status === "authenticated" ? (
+        {/* Right Side */}
+        <div className="hidden md:flex items-center gap-4">
+          {status === "authenticated" ? (
             <Link
               href="/dashboard"
-              className="text-gray-500 hover:text-[#0047FF] dark:text-[#888] dark:hover:text-[#D6FF00] transition-colors focus-ring p-1 max-w-[160px] truncate font-bold dark:font-normal"
+              className="text-[13px] font-medium transition-colors focus-ring px-2 py-1 rounded-lg"
+              style={{ color: "var(--text-muted)" }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.color = "var(--text)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.color = "var(--text-muted)")
+              }
             >
-              [ {session?.user?.name?.split(" ")[0]?.toUpperCase() || "PROFILE"}{" "}
-              ]
+              {session?.user?.name?.split(" ")[0] || "Account"}
             </Link>
           ) : (
             <Link
               href="/login"
-              className="text-gray-500 hover:text-gray-900 dark:text-[#888] dark:hover:text-white transition-colors focus-ring p-1 font-bold dark:font-normal"
+              className="text-[13px] font-medium transition-colors focus-ring px-2 py-1 rounded-lg"
+              style={{ color: "var(--text-muted)" }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.color = "var(--text)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.color = "var(--text-muted)")
+              }
             >
-              [ LOG IN ]
+              Sign in
             </Link>
           )}
-          <Link
-            href="/upload"
-            className="relative px-6 py-2 bg-[#0047FF] text-white font-sans font-bold flex items-center gap-2 overflow-hidden group focus-ring border border-[transparent] hover:border-white transition-colors"
-          >
-            <span className="relative z-10 group-hover:-translate-y-[120%] transition-transform duration-300">
-              UPLOAD RESUME
-            </span>
-            <span className="absolute inset-0 z-10 flex items-center justify-center translate-y-[120%] group-hover:translate-y-0 transition-transform duration-300 bg-black dark:bg-[#D6FF00] text-white dark:text-black gap-2">
-              START SCAN <ArrowUpRight className="w-4 h-4" />
-            </span>
-            {/* Hard shadow embedded natively */}
-            <div className="absolute inset-0 shadow-[4px_4px_0_#000] dark:shadow-[4px_4px_0_#fff] pointer-events-none group-hover:shadow-[0_0_0_#000] dark:group-hover:shadow-[0_0_0_#fff] transition-shadow duration-300" />
+
+          <Link href="/upload" className="btn-primary focus-ring">
+            Analyze Resume
+            <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
           </Link>
         </div>
 
-        {/* MOBILE TOGGLE */}
+        {/* Mobile Toggle */}
         <button
-          className="md:hidden p-2 text-gray-500 hover:text-gray-900 dark:text-[#888] dark:hover:text-white focus-ring transition-colors"
+          className="md:hidden p-2 rounded-lg transition-colors focus-ring"
+          style={{ color: "var(--text-muted)" }}
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-expanded={mobileOpen}
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "var(--text)";
+            e.currentTarget.style.background = "var(--bg-elevated)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--text-muted)";
+            e.currentTarget.style.background = "transparent";
+          }}
         >
           {mobileOpen ? (
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           ) : (
-            <Menu className="w-6 h-6" />
+            <Menu className="w-5 h-5" />
           )}
         </button>
       </nav>
 
-      {/* MOBILE MENU */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: "auto" }}
-            exit={{ height: 0 }}
-            className="md:hidden border-t-[1px] border-gray-200 dark:border-[#222] bg-white dark:bg-black overflow-hidden"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="md:hidden overflow-hidden border-t"
+            style={{
+              background: "var(--bg-card)",
+              borderColor: "var(--border)",
+              boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+            }}
           >
-            <div className="flex flex-col px-4 py-6 gap-6">
-              {[
-                { href: "/", label: "Home" },
-                { href: "/upload", label: "Analyze" },
-                { href: "/dashboard", label: "Dashboard" },
-                { href: "/#pricing", label: "Pricing" },
-              ].map((link) => (
+            <div className="flex flex-col px-6 py-5 gap-1">
+              {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`text-lg font-black dark:font-bold focus-ring ${
-                    pathname === link.href
-                      ? "text-[#0047FF] dark:text-[#D6FF00]"
-                      : "text-gray-900 dark:text-white"
-                  }`}
+                  className="px-3 py-3 rounded-lg text-sm font-medium transition-colors focus-ring"
+                  style={{
+                    color:
+                      pathname === link.href
+                        ? "var(--text)"
+                        : "var(--text-muted)",
+                    background:
+                      pathname === link.href
+                        ? "var(--bg-elevated)"
+                        : "transparent",
+                  }}
                 >
                   {link.label}
                 </Link>
               ))}
-
-              <div className="flex items-center justify-between py-2 text-gray-900 dark:text-white font-bold">
-                <span>Theme</span>
-                <button
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 border border-gray-200 dark:border-[#333] rounded-md focus-ring"
-                >
-                  {mounted &&
-                    (theme === "dark" ? (
-                      <Sun className="w-5 h-5 text-[#D6FF00]" />
-                    ) : (
-                      <Moon className="w-5 h-5 text-[#0047FF]" />
-                    ))}
-                </button>
-              </div>
-
-              <div className="w-full h-[1px] bg-gray-200 dark:bg-[#222] my-2" />
-
+              <div className="divider my-3" />
               <Link
                 href="/upload"
                 onClick={() => setMobileOpen(false)}
-                className="w-full py-4 bg-[#0047FF] dark:bg-[#D6FF00] text-white dark:text-black font-black dark:font-bold text-center border-[1px] border-transparent hover:border-gray-900 dark:hover:border-white transition-colors focus-ring flex justify-center items-center gap-2"
+                className="btn-primary w-full focus-ring"
               >
-                UPLOAD RESUME <ArrowUpRight className="w-4 h-4" />
+                Analyze Resume
+                <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
               </Link>
             </div>
           </motion.div>

@@ -19,10 +19,10 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 font-mono text-sm uppercase ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 font-mono text-sm uppercase  ${
         scrolled
           ? "bg-black/95 backdrop-blur-md border-b-[1px] border-[#222]"
-          : "bg-transparent"
+          : "bg-transparent "
       }`}
     >
       <nav className="w-full px-4 md:px-6 h-16 flex items-center justify-between mx-auto max-w-[1400px]">

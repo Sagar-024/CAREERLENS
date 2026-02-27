@@ -8,9 +8,9 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  ArrowRight,
-  Shield,
-  Clock,
+  ArrowUpRight,
+  X,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
@@ -24,536 +24,596 @@ type UploadState =
   | "done"
   | "error";
 
-const analysisSteps = [
-  { id: 1, label: "INIT PARSER MODULE", icon: "[01]" },
-  { id: 2, label: "NLP SEMANTIC INDEX", icon: "[02]" },
-  { id: 3, label: "ATS SCORING ENGINE", icon: "[03]" },
-  { id: 4, label: "BENCHMARK DB SYNC", icon: "[04]" },
-  { id: 5, label: "GENERATE INSIGHTS", icon: "[05]" },
-];
+const ADMIN_EMAILS = ["bishta2323@gmail.com", "sagarkharal024@gmail.com"];
 
-const terminalLines = [
-  "> careerlens_core v3.2 boot",
-  "> [SYS] awaiting io stream...",
-  "> [NLP] loading model weights (4.2GB)...",
-  "> [ATS] engine initialized.",
-  "> [NET] semantic indexer ready.",
-  "> waiting for transmission...",
+const TERMINAL_LINES = [
+  "Initializing analysis engine…",
+  "Parsing resume content…",
+  "Running SBERT semantic encoder…",
+  "Extracting skill vectors…",
+  "Matching against job description…",
+  "Computing SHAP feature importance…",
+  "Building recommendations…",
 ];
 
 export default function UploadPage() {
   const { data: session, status } = useSession();
   const [state, setState] = useState<UploadState>("idle");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
-  const [progress, setProgress] = useState(0);
   const [jd, setJd] = useState("");
-  const [charCount, setCharCount] = useState(0);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [termLines, setTermLines] = useState<string[]>([]);
+  const [loginOpen, setLoginOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const startTerminal = useCallback(async () => {
-    setTerminalOutput([]);
-    for (let i = 0; i < terminalLines.length; i++) {
-      await new Promise((r) => setTimeout(r, 300 + Math.random() * 200));
-      setTerminalOutput((prev) => [...prev, terminalLines[i]]);
-    }
-  }, []);
+  const email = session?.user?.email ?? "";
+  const isAdmin = ADMIN_EMAILS.includes(email);
+  const tier = isAdmin ? "pro" : ((session?.user as any)?.tier ?? "free");
+  const analysisCount = (session?.user as any)?.analysisCount ?? 0;
+  const scansLeft = isAdmin ? Infinity : Math.max(0, 2 - analysisCount);
 
-  const simulateAnalysis = useCallback(
-    async (uploadedFile: File) => {
-      setState("analyzing");
-      await startTerminal();
-
-      // Start an interval to update progress to look cool
-      let simProgress = 0;
-      const progressInterval = setInterval(() => {
-        if (simProgress < 90) {
-          simProgress += 10;
-          setProgress(simProgress);
-        }
-      }, 600);
-
-      try {
-        const formData = new FormData();
-        formData.append("resume", uploadedFile);
-        formData.append("jd_text", jd.trim());
-
-        const res = await fetch("/api/analyze", {
-          method: "POST",
-          body: formData,
-        });
-
-        const data = await res.json();
-
-        clearInterval(progressInterval);
-        setProgress(100);
-
-        if (!res.ok) {
-          if (data.upgradeRequired) {
-            toast.error(data.error);
-            router.push("/#pricing");
-            return;
-          }
-          throw new Error(data.error || "Analysis failed");
-        }
-
-        await new Promise((r) => setTimeout(r, 500));
-        setState("done");
-        toast.success("SYSLOG: Analysis complete. Rerouting.");
-        await new Promise((r) => setTimeout(r, 1200));
-
-        router.push(`/results/${data.analysis_id}`);
-      } catch (err: any) {
-        clearInterval(progressInterval);
-        console.error(err);
-        const msg = err.message || "Failed to analyze resume";
-        toast.error(msg);
-        setErrorMessage(msg.toUpperCase());
-        setState("error");
-      }
-    },
-    [router, startTerminal, jd],
-  );
-
-  const handleFileSelection = useCallback((f: File) => {
-    if (!f) return;
-    const fileName = f.name.toLowerCase();
+  const handleFile = useCallback((f: File) => {
+    const name = f.name.toLowerCase();
     const valid =
       f.type === "application/pdf" ||
-      fileName.endsWith(".pdf") ||
-      fileName.endsWith(".docx") ||
+      name.endsWith(".pdf") ||
+      name.endsWith(".docx") ||
       f.type ===
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     if (!valid) {
-      toast.error("ERR_INVALID_FORMAT: Require PDF/DOCX");
-      setErrorMessage("INVALID FORMAT. PDF OR DOCX REQUIRED.");
-      setState("error");
+      toast.error("Only PDF or DOCX files are supported.");
       return;
     }
     setFile(f);
-    setErrorMessage("");
+    setErrorMsg("");
     setState("idle");
   }, []);
 
   const startAnalysis = useCallback(async () => {
     if (!file) {
-      toast.error("ERR_MISSING_DATA: No resume payload detected.");
+      toast.error("Please select a resume file first.");
       return;
     }
     if (status === "unauthenticated") {
-      setIsLoginModalOpen(true);
+      setLoginOpen(true);
       return;
     }
-
-    const tier = (session?.user as any)?.tier || "free";
-    const analysisCount = (session?.user as any)?.analysisCount || 0;
-
-    if (tier === "free" && analysisCount >= 2) {
+    if (!jd.trim() || jd.trim().length < 10) {
+      toast.error("Please enter a more complete job description.");
+      return;
+    }
+    if (!isAdmin && tier === "free" && analysisCount >= 2) {
       toast.error("Free limit reached. Upgrade to Pro for unlimited scans.");
       router.push("/#pricing");
       return;
     }
-    if (!jd.trim()) {
-      toast.error("ERR_MISSING_DATA: Target Job Description Required.");
-      return;
+
+    setState("analyzing");
+    setProgress(0);
+    setTermLines([]);
+
+    (async () => {
+      for (const line of TERMINAL_LINES) {
+        await new Promise((r) => setTimeout(r, 400 + Math.random() * 200));
+        setTermLines((prev) => [...prev, line]);
+      }
+    })();
+
+    const tick = setInterval(() => {
+      setProgress((p) => (p < 85 ? p + (Math.random() * 10 + 3) : p));
+    }, 700);
+
+    try {
+      const form = new FormData();
+      form.append("resume", file);
+      form.append("jd_text", jd.trim());
+      const res = await fetch("/api/analyze", { method: "POST", body: form });
+      const data = await res.json();
+
+      clearInterval(tick);
+      setProgress(100);
+
+      if (!res.ok) {
+        if (data.upgradeRequired) {
+          toast.error(data.error);
+          router.push("/#pricing");
+          return;
+        }
+        throw new Error(data.error || "Analysis failed");
+      }
+
+      await new Promise((r) => setTimeout(r, 600));
+      setState("done");
+      toast.success("Analysis complete — redirecting to results…");
+      await new Promise((r) => setTimeout(r, 1000));
+      router.push(`/results/${data.analysis_id}`);
+    } catch (err: any) {
+      clearInterval(tick);
+      const msg = err.message || "Something went wrong.";
+      toast.error(msg);
+      setErrorMsg(msg);
+      setState("error");
     }
+  }, [file, jd, status, isAdmin, tier, analysisCount, router]);
 
-    setState("uploading");
-    await new Promise((r) => setTimeout(r, 1000));
-    simulateAnalysis(file);
-  }, [simulateAnalysis, file, jd, status, session, router]);
-
-  const onDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setState("idle");
-      setErrorMessage("");
-      const f = e.dataTransfer.files[0];
-      if (f) handleFileSelection(f);
-    },
-    [handleFileSelection],
-  );
+  const isRunning = state === "uploading" || state === "analyzing";
 
   return (
-    <div className="min-h-screen structural-bg flex flex-col items-center justify-center px-4 md:px-6 py-16 pt-24 md:py-24 md:pt-32 relative">
-      <div className="w-full max-w-[1400px] flex flex-col lg:flex-row gap-8 lg:gap-24 relative z-10 mx-auto items-center">
-        {/* Left Side (Header & Info) */}
-        <motion.div
-          initial={{ opacity: 0, x: -40, filter: "blur(10px)" }}
-          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-          transition={{
-            duration: 0.8,
-            ease: [0.22, 1, 0.36, 1],
-            staggerChildren: 0.1,
-          }}
-          className="lg:w-1/2"
-        >
-          <div className="font-mono text-xs text-[#0047FF] font-bold uppercase mb-4 tracking-widest inline-flex border border-[#0047FF] px-2 py-1 bg-[#0047FF]/10">
-            [ DATA INGESTION ]
-          </div>
-          <h1 className="display-title text-4xl sm:text-5xl md:text-7xl mb-6 text-white text-balance uppercase leading-none">
-            UPLOAD <br />
-            <span
-              className="text-transparent"
-              style={{ WebkitTextStroke: "2px #0047FF" }}
-            >
-              PAYLOAD.
-            </span>
-          </h1>
-          <p className="text-lg text-[#888] mb-12 max-w-md font-medium">
-            Transmit PDF or DOCX format for immediate algorithmic vectorization.
-            Initial parsing cycle executes in ~30s.
-          </p>
+    <div
+      className="min-h-screen flex items-center justify-center px-4 sm:px-6 pt-4 pb-24"
+      style={{ background: "var(--bg)" }}
+    >
+      <div className="w-full max-w-5xl mx-auto flex flex-col lg:flex-row gap-14 lg:gap-20 lg:items-start">
+        {/* ── Left: Info ── */}
+        <div className="lg:w-[360px] shrink-0">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <span className="badge mb-5">AI Resume Analysis</span>
 
-          <div className="space-y-6 max-w-sm">
-            {[
-              {
-                label: "SECURE TUNNEL",
-                desc: "256-bit AES encryption active",
-                icon: Shield,
-              },
-              {
-                label: "DATA RETENTION",
-                desc: "Zero-day retention policy",
-                icon: CheckCircle2,
-              },
-              {
-                label: "EXECUTION TIME",
-                desc: "Sub-30 second processing",
-                icon: Clock,
-              },
-            ].map((Feature) => (
-              <div
-                key={Feature.label}
-                className="flex gap-4 p-4 border border-[#222] bg-[#050505]"
-              >
-                <Feature.icon className="w-5 h-5 text-[#D6FF00] shrink-0" />
-                <div>
-                  <div className="font-bold text-sm uppercase text-white mb-1">
-                    {Feature.label}
-                  </div>
-                  <div className="font-mono text-xs text-[#666] uppercase">
-                    {Feature.desc}
+            <h1
+              className="text-3xl md:text-4xl font-bold tracking-tight leading-tight mb-4"
+              style={{ color: "var(--text)" }}
+            >
+              Upload your resume.{" "}
+              <span style={{ color: "var(--accent)" }}>Know your score.</span>
+            </h1>
+
+            <p
+              className="text-[15px] leading-relaxed mb-10"
+              style={{ color: "var(--text-body)" }}
+            >
+              Paste a job description and upload your resume. Our SBERT engine
+              returns your readiness score in about 30 seconds.
+            </p>
+
+            <div className="space-y-5 mb-8">
+              {[
+                {
+                  label: "Private & secure",
+                  sub: "Files deleted immediately after analysis",
+                },
+                {
+                  label: "~30 second results",
+                  sub: "SBERT semantic matching engine",
+                },
+                {
+                  label: "Actionable insights",
+                  sub: "Skills gaps + course recommendations",
+                },
+              ].map((item) => (
+                <div key={item.label} className="flex gap-3.5">
+                  <div
+                    className="w-1.5 h-1.5 rounded-full mt-2 shrink-0"
+                    style={{ background: "var(--accent)" }}
+                  />
+                  <div>
+                    <div
+                      className="text-sm font-medium"
+                      style={{ color: "var(--text)" }}
+                    >
+                      {item.label}
+                    </div>
+                    <div
+                      className="text-xs mt-0.5"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {item.sub}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          {/* Usage badge */}
-          {status === "authenticated" && (
-            <div className="mt-8 inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-[#222] rounded-lg shadow-sm dark:shadow-none w-fit">
-              <div className="flex gap-1">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-2 h-2 rounded-sm ${i < ((session?.user as any)?.usageCount || 0) ? "bg-[#FF2A00]" : "bg-gray-200 dark:bg-[#333]"}`}
-                  />
-                ))}
-              </div>
-              <span className="font-mono text-[10px] text-gray-500 dark:text-[#aaa] uppercase font-bold dark:font-normal">
-                {2 - Math.min(2, (session?.user as any)?.analysisCount || 0)}{" "}
-                free scans left
-              </span>
+              ))}
             </div>
-          )}
-        </motion.div>
 
-        {/* Right Side (Uploader / Terminal) */}
-        <div className="lg:w-1/2 w-full max-w-xl">
+            {status === "authenticated" && (
+              <div
+                className="flex items-center gap-2.5 p-3 rounded-xl"
+                style={{
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                {isAdmin ? (
+                  <>
+                    <Sparkles
+                      className="w-3.5 h-3.5 shrink-0"
+                      style={{ color: "var(--accent)" }}
+                    />
+                    <span
+                      className="text-sm"
+                      style={{ color: "var(--text-body)" }}
+                    >
+                      <strong style={{ color: "var(--text)" }}>Pro</strong> —
+                      Unlimited analyses
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{
+                        background:
+                          scansLeft > 0 ? "var(--positive)" : "var(--negative)",
+                      }}
+                    />
+                    <span
+                      className="text-sm"
+                      style={{ color: "var(--text-body)" }}
+                    >
+                      {scansLeft > 0
+                        ? `Free · ${scansLeft} scan${scansLeft === 1 ? "" : "s"} remaining`
+                        : "Free limit reached"}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+          </motion.div>
+        </div>
+
+        {/* ── Right: Form Card ── */}
+        <div className="flex-1">
           <AnimatePresence mode="wait">
             {(state === "idle" ||
               state === "dragging" ||
               state === "error") && (
               <motion.div
-                key="dropzone"
-                initial={{
-                  opacity: 0,
-                  y: 30,
-                  scale: 0.95,
-                  filter: "blur(10px)",
-                }}
-                animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-                exit={{ opacity: 0, y: -30, scale: 0.95, filter: "blur(10px)" }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className={`brutalist-card p-6 md:p-12 text-center transition-colors relative overflow-hidden min-h-[450px] flex flex-col items-center justify-center ${
-                  state === "dragging"
-                    ? "bg-[#0047FF]/5 border-[#0047FF]"
-                    : "bg-[#050505]"
-                }`}
-                onDrop={onDrop}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setState("dragging");
-                }}
-                onDragLeave={() => setState("idle")}
+                key="form"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="glass-card overflow-hidden"
               >
-                <div className="scan-line-acid opacity-20 pointer-events-none" />
-
-                {/* Job Description Block */}
+                {/* Step 1 */}
                 <div
-                  className="w-full mb-8 text-left relative z-10"
-                  onClick={(e) => e.stopPropagation()}
+                  className="p-6 border-b"
+                  style={{ borderColor: "var(--border)" }}
                 >
-                  <label
-                    htmlFor="jd-input"
-                    className="font-mono text-[10px] text-[#0047FF] uppercase mb-2 block font-bold tracking-widest"
-                  >
-                    [ TARGET JOB PROFILE NAME ONLY ]
-                  </label>
-                  <input
-                    id="jd-input"
-                    type="text"
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <div
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold"
+                      style={{
+                        background: "var(--accent-dim)",
+                        color: "var(--accent)",
+                      }}
+                    >
+                      1
+                    </div>
+                    <h2
+                      className="text-sm font-semibold"
+                      style={{ color: "var(--text)" }}
+                    >
+                      Job description
+                    </h2>
+                  </div>
+                  <textarea
+                    rows={4}
                     value={jd}
                     onChange={(e) => setJd(e.target.value)}
-                    placeholder="e.g. FULL STACK DEVELOPER (No description needed)"
-                    className="w-full bg-[#000] border border-[#222] text-white p-4 font-mono text-xs focus:border-[#0047FF] focus:ring-1 focus:ring-[#0047FF] focus:outline-none h-12 transition-colors placeholder:text-[#333] uppercase"
+                    placeholder="Paste the full job listing or describe the role…"
+                    className="w-full rounded-xl px-4 py-3 text-sm resize-none focus:outline-none transition-colors"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text)",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "var(--accent)")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "var(--border)")
+                    }
+                    autoComplete="off"
                   />
                 </div>
 
-                {/* Upload Block or Selected File */}
-                {!file ? (
-                  <div
-                    className="w-full flex-1 flex flex-col items-center justify-center cursor-pointer border border-dashed border-[#222] hover:border-[#D6FF00] hover:bg-[#111] transition-colors py-8 group"
-                    onClick={() => inputRef.current?.click()}
-                  >
-                    <input
-                      ref={inputRef}
-                      type="file"
-                      accept=".pdf,.docx"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleFileSelection(f);
-                      }}
-                    />
-
-                    <motion.div
-                      animate={
-                        state === "dragging"
-                          ? { y: -10, scale: 1.05 }
-                          : { y: [0, -5, 0] }
-                      }
-                      transition={
-                        state === "dragging"
-                          ? { type: "spring", stiffness: 300 }
-                          : { repeat: Infinity, duration: 4, ease: "easeInOut" }
-                      }
-                      className="mb-8"
-                    >
-                      <div className="w-20 h-20 bg-[#D6FF00] flex items-center justify-center mx-auto border border-black shadow-[4px_4px_0_#fff] group-hover:scale-105 transition-transform">
-                        <Upload className="w-8 h-8 text-black" />
-                      </div>
-                    </motion.div>
-
-                    <h2 className="text-2xl font-bold uppercase text-white mb-2 tracking-tight">
-                      {state === "dragging"
-                        ? "RELEASE PAYLOAD"
-                        : "DRAG & DROP RESUME"}
-                    </h2>
-                    <div className="font-mono text-xs text-[#666] uppercase group-hover:text-[#D6FF00] transition-colors">
-                      OR CLICK TO BROWSE CPU
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full flex-1 flex flex-col items-center justify-center border border-dashed border-[#0047FF] bg-[#0047FF]/5 py-8 group relative">
-                    <div className="w-16 h-16 bg-[#0047FF] flex items-center justify-center mx-auto border border-[#0047FF] shadow-[4px_4px_0_#fff] mb-6">
-                      <FileText className="w-8 h-8 text-white" />
-                    </div>
-
-                    <h2 className="text-xl font-bold uppercase text-white mb-2 tracking-tight">
-                      RESUME ACQUIRED
-                    </h2>
-                    <div className="font-mono text-xs text-[#0047FF] uppercase truncate max-w-[200px]">
-                      {file.name}
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFile(null);
-                        setState("idle");
-                        if (inputRef.current) inputRef.current.value = "";
-                      }}
-                      className="absolute top-4 right-4 text-[#888] hover:text-[#FF2A00] transition-colors"
-                      title="Remove File"
-                    >
-                      <span className="font-mono text-xs uppercase px-2 py-1 border border-[#333] hover:border-[#FF2A00]">
-                        [ CLEAR ]
-                      </span>
-                    </button>
-                  </div>
-                )}
-
-                {state === "error" && (
-                  <div className="mt-6 flex flex-col items-center justify-center gap-2 p-3 bg-[#FF2A00]/10 border border-[#FF2A00] text-[#FF2A00] font-mono text-xs uppercase w-full text-center">
-                    <div className="flex gap-2 items-center font-bold">
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                      SYSTEM FAILURE
-                    </div>
-                    <div>{errorMessage}</div>
-                  </div>
-                )}
-
-                {/* Analyze Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (file) {
-                      startAnalysis();
-                    } else {
-                      // Trigger file input click if no file is selected
-                      inputRef.current?.click();
-                    }
-                  }}
-                  className={`w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-black dark:font-bold text-sm uppercase tracking-wider transition-all duration-300 ${
-                    file
-                      ? "bg-black text-white hover:bg-gray-800 hover:shadow-lg dark:bg-[#D6FF00] dark:text-black dark:hover:bg-[#c4eb00] dark:hover:shadow-[0_0_40px_rgba(214,255,0,0.2)]"
-                      : "bg-[#0047FF] text-white hover:bg-blue-700 dark:bg-[#222] dark:text-[#F3F3F3] dark:hover:bg-[#333] border border-transparent dark:border-[#333]"
-                  }`}
+                {/* Step 2 */}
+                <div
+                  className="p-6 border-b"
+                  style={{ borderColor: "var(--border)" }}
                 >
-                  {file ? (
-                    <>
-                      Analyze My Resume
-                      <ArrowRight className="w-4 h-4" />
-                    </>
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <div
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold"
+                      style={{
+                        background: "var(--accent-dim)",
+                        color: "var(--accent)",
+                      }}
+                    >
+                      2
+                    </div>
+                    <h2
+                      className="text-sm font-semibold"
+                      style={{ color: "var(--text)" }}
+                    >
+                      Upload resume
+                    </h2>
+                    <span
+                      className="text-xs ml-auto"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      PDF or DOCX
+                    </span>
+                  </div>
+
+                  {!file ? (
+                    <div
+                      className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-150"
+                      style={{
+                        borderColor:
+                          state === "dragging"
+                            ? "var(--accent)"
+                            : "var(--border)",
+                        background:
+                          state === "dragging"
+                            ? "var(--accent-dim)"
+                            : "transparent",
+                      }}
+                      onClick={() => inputRef.current?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setState("dragging");
+                      }}
+                      onDragLeave={() => setState("idle")}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setState("idle");
+                        const f = e.dataTransfer.files[0];
+                        if (f) handleFile(f);
+                      }}
+                    >
+                      <input
+                        ref={inputRef}
+                        type="file"
+                        accept=".pdf,.docx"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleFile(f);
+                        }}
+                      />
+                      <Upload
+                        className="w-7 h-7 mx-auto mb-3"
+                        style={{ color: "var(--text-muted)" }}
+                      />
+                      <p
+                        className="text-sm font-medium"
+                        style={{ color: "var(--text-body)" }}
+                      >
+                        {state === "dragging"
+                          ? "Drop it here"
+                          : "Drag & drop your resume"}
+                      </p>
+                      <p
+                        className="text-xs mt-1"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        or click to browse
+                      </p>
+                    </div>
                   ) : (
-                    "Select Resume PDF"
+                    <div
+                      className="flex items-center gap-3 p-4 rounded-xl"
+                      style={{
+                        background: "var(--accent-dim)",
+                        border: "1px solid rgba(232,169,70,0.2)",
+                      }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                        style={{
+                          background: "var(--accent)",
+                          color: "#09090b",
+                        }}
+                      >
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-sm font-medium truncate"
+                          style={{ color: "var(--text)" }}
+                        >
+                          {file.name}
+                        </p>
+                        <p
+                          className="text-xs mt-0.5"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          {(file.size / 1024).toFixed(0)} KB · Ready
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setFile(null);
+                          setState("idle");
+                          if (inputRef.current) inputRef.current.value = "";
+                        }}
+                        className="p-1.5 rounded-lg transition-colors focus-ring shrink-0"
+                        style={{ color: "var(--text-muted)" }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = "var(--text)";
+                          e.currentTarget.style.background =
+                            "var(--bg-elevated)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = "var(--text-muted)";
+                          e.currentTarget.style.background = "transparent";
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   )}
-                </button>
+                </div>
 
-                <p className="text-center text-gray-500 dark:text-[#888] text-xs font-mono uppercase tracking-wider font-bold dark:font-normal">
-                  Free plan —{" "}
-                  {2 - Math.min(2, (session?.user as any)?.analysisCount || 0)}{" "}
-                  scans remaining
-                </p>
+                {/* Error */}
+                {state === "error" && (
+                  <div className="px-6 pt-5">
+                    <div
+                      className="flex items-start gap-2.5 p-3.5 rounded-xl"
+                      style={{
+                        background: "var(--negative-dim)",
+                        border: "1px solid rgba(224,92,77,0.2)",
+                      }}
+                    >
+                      <AlertCircle
+                        className="w-4 h-4 shrink-0 mt-0.5"
+                        style={{ color: "var(--negative)" }}
+                      />
+                      <p
+                        className="text-sm"
+                        style={{ color: "var(--negative)" }}
+                      >
+                        {errorMsg || "Something went wrong. Please try again."}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit */}
+                <div className="p-6">
+                  <button
+                    onClick={startAnalysis}
+                    disabled={isRunning}
+                    className="btn-primary w-full focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Analyze Resume
+                    <ArrowUpRight className="w-4 h-4 shrink-0" />
+                  </button>
+                  <p
+                    className="text-xs text-center mt-3"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Your file is deleted immediately after analysis
+                  </p>
+                </div>
               </motion.div>
             )}
 
-            {state === "uploading" && (
-              <motion.div
-                key="uploading"
-                initial={{ opacity: 0, filter: "blur(10px)", scale: 0.95 }}
-                animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
-                exit={{ opacity: 0, filter: "blur(10px)", scale: 0.95 }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className="brutalist-card p-6 md:p-12 text-center min-h-[450px] flex flex-col items-center justify-center bg-[#050505]"
-              >
-                <div className="w-20 h-20 bg-[#0047FF] flex items-center justify-center mx-auto border border-black shadow-[4px_4px_0_#fff] mb-6 animate-pulse">
-                  <FileText className="w-8 h-8 text-white" />
-                </div>
-                <h2 className="text-xl font-bold uppercase text-white mb-2">
-                  TRANSMITTING...
-                </h2>
-                <div className="font-mono text-xs text-[#888]">
-                  {file?.name}
-                </div>
-              </motion.div>
-            )}
-
+            {/* Analyzing / Done */}
             {(state === "analyzing" || state === "done") && (
               <motion.div
                 key="analyzing"
-                initial={{ opacity: 0, filter: "blur(10px)", scale: 0.98 }}
-                animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className="brutalist-card p-0 overflow-hidden bg-[#050505] min-h-[450px] flex flex-col"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card overflow-hidden relative"
               >
-                {/* Terminal Header */}
-                <div className="border-b border-[#222] bg-black px-4 py-2 flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-[#D6FF00] uppercase tracking-widest">
-                    {" "}
-                    careerlens_tty1{" "}
+                {/* Terminal header */}
+                <div
+                  className="flex items-center gap-1.5 px-5 py-3 border-b"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    borderColor: "var(--border)",
+                  }}
+                >
+                  {["#ff5f57", "#febc2e", "#28c840"].map((c, i) => (
+                    <div
+                      key={i}
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ background: c }}
+                    />
+                  ))}
+                  <span
+                    className="ml-3 text-xs font-mono"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    careerlens ~ analyzing
                   </span>
-                  <div className="flex gap-1.5">
-                    <div className="w-2 h-2 bg-[#FF2A00]" />
-                    <div className="w-2 h-2 bg-[#D6FF00]" />
-                    <div className="w-2 h-2 bg-[#0047FF]" />
-                  </div>
                 </div>
 
-                {/* Progress Visualizer */}
-                <div className="p-6 border-b border-[#222] bg-[#0A0A0A] shrink-0">
-                  <div className="flex justify-between items-end mb-2">
-                    <div className="font-mono text-xs text-[#888] uppercase tracking-wider">
-                      SYSTEM LOAD
-                    </div>
-                    <div className="font-mono text-xl font-bold text-[#D6FF00] leading-none">
-                      {progress}%
-                    </div>
+                {/* Progress */}
+                <div
+                  className="px-5 py-4 border-b"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <span
+                      className="text-xs"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Progress
+                    </span>
+                    <span
+                      className="text-xs font-mono tabular-nums"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      {Math.round(Math.min(progress, 100))}%
+                    </span>
                   </div>
-                  <div className="w-full h-2 bg-black border border-[#222]">
+                  <div
+                    className="w-full h-1 rounded-full overflow-hidden"
+                    style={{ background: "var(--bg-elevated)" }}
+                  >
                     <motion.div
-                      className="h-full bg-[#D6FF00]"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
-                      transition={{ duration: 0.2 }}
+                      className="h-1 rounded-full"
+                      style={{ background: "var(--accent)" }}
+                      animate={{ width: `${Math.min(progress, 100)}%` }}
+                      transition={{ duration: 0.4 }}
                     />
                   </div>
                 </div>
 
-                {/* Log Output */}
-                <div className="flex-1 p-6 font-mono text-[10px] sm:text-xs text-[#0047FF] space-y-2 overflow-y-auto relative bg-black">
-                  <div className="scan-line-acid opacity-30" />
-                  {terminalOutput.map((line, i) => (
+                {/* Terminal lines */}
+                <div className="p-5 min-h-[200px] font-mono text-xs space-y-1.5">
+                  {termLines.map((line, i) => (
                     <motion.div
                       key={i}
-                      initial={{ opacity: 0, x: -10 }}
+                      initial={{ opacity: 0, x: -4 }}
                       animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center gap-2"
+                      style={{ color: "var(--text-body)" }}
                     >
+                      <span
+                        style={{ color: "var(--accent)" }}
+                        className="shrink-0"
+                      >
+                        $
+                      </span>
                       {line}
                     </motion.div>
                   ))}
-
-                  {analysisSteps.map((step, i) => {
-                    const done = currentStep > i;
-                    const active = currentStep === i && state !== "done";
-                    if (currentStep < i && state !== "done") return null;
-                    return (
-                      <motion.div
-                        key={step.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className={`flex items-center gap-3 mt-4 ${done ? "text-[#666]" : active ? "text-[#D6FF00]" : ""}`}
-                      >
-                        <span className="shrink-0">{step.icon}</span>
-                        <span className="uppercase">{step.label}</span>
-                        {active && <span className="animate-pulse">_</span>}
-                        {done && (
-                          <span className="text-[#D6FF00] ml-auto">OK</span>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-
                   {state !== "done" && (
-                    <span className="inline-block w-2 h-4 bg-[#D6FF00] animate-pulse mt-2" />
+                    <div
+                      className="flex items-center gap-2"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      <span style={{ color: "var(--accent)" }}>$</span>
+                      <span className="animate-pulse">_</span>
+                    </div>
                   )}
                 </div>
 
-                {/* Done Overlay */}
+                {/* Done overlay */}
                 <AnimatePresence>
                   {state === "done" && (
                     <motion.div
-                      initial={{
-                        opacity: 0,
-                        filter: "blur(10px)",
-                        scale: 1.05,
-                      }}
-                      animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
-                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                      className="absolute inset-0 bg-[#D6FF00] flex flex-col items-center justify-center z-10 p-8 text-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl"
+                      style={{ background: "rgba(9,9,11,0.95)" }}
                     >
-                      <h2 className="display-title text-3xl md:text-4xl text-black uppercase leading-none mb-4">
-                        ANALYSIS
-                        <br />
-                        COMPLETE.
-                      </h2>
-                      <div className="font-mono text-xs text-black uppercase tracking-widest bg-black/10 px-4 py-2 border border-black">
-                        REROUTING TO DASHBOARD...
+                      <CheckCircle2
+                        className="w-12 h-12"
+                        style={{ color: "var(--accent)" }}
+                      />
+                      <div className="text-center">
+                        <p
+                          className="font-medium"
+                          style={{ color: "var(--text)" }}
+                        >
+                          Analysis complete
+                        </p>
+                        <p
+                          className="text-sm mt-1"
+                          style={{ color: "var(--text-body)" }}
+                        >
+                          Redirecting to your results…
+                        </p>
                       </div>
                     </motion.div>
                   )}
@@ -563,10 +623,8 @@ export default function UploadPage() {
           </AnimatePresence>
         </div>
       </div>
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-      />
+
+      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   );
 }

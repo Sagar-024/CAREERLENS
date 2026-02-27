@@ -85,7 +85,7 @@ export default function ResultsPage({
     .slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] dark:bg-[#080808] pt-28 pb-16 px-4 md:px-6">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#080808] pt-8 pb-16 px-4 md:px-6">
       <div className="max-w-6xl mx-auto space-y-8">
         <button
           onClick={() => router.push("/dashboard")}
