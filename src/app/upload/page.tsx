@@ -81,29 +81,88 @@ export default function UploadPage() {
 
     // Mapping keys for AI detection - Expanded to support the 42+ roles
     const profileMapping = [
-      { role: "Data Analyst", keys: ["data analyst", "analytics", "data visualization"] },
+      {
+        role: "Data Analyst",
+        keys: ["data analyst", "analytics", "data visualization"],
+      },
       { role: "Data Scientist", keys: ["data scientist", "data science"] },
-      { role: "Software Engineer", keys: ["software engineer", "software eng", "software developer"] },
+      {
+        role: "Software Engineer",
+        keys: ["software engineer", "software eng", "software developer"],
+      },
       { role: "Product Manager", keys: ["product manager", "product owner"] },
-      { role: "UX/UI Designer", keys: ["designer", "ui/ux", "figma", "graphic designer"] },
-      { role: "DevOps Engineer", keys: ["devops", "sre", "kubernetes", "docker"] },
-      { role: "Full Stack Developer", keys: ["full stack", "fullstack", "mstack"] },
-      { role: "AI Engineer", keys: ["ai engineer", "artificial intelligence", "deep learning", "nlp", "neural"] },
-      { role: "Machine Learning Engineer", keys: ["machine learning engineer", "ml engineer", "mlops"] },
-      { role: "Cloud Engineer", keys: ["cloud engineer", "aws", "azure", "gp"] },
-      { role: "Cybersecurity Analyst", keys: ["cybersecurity", "security analyst", "soc analyst", "ethical hacker"] },
-      { role: "Mobile App Developer", keys: ["mobile developer", "android", "ios", "flutter", "react native"] },
-      { role: "Blockchain Developer", keys: ["blockchain", "web3", "solidity", "ethereum"] },
-      { role: "Database Administrator", keys: ["database administrator", "dba", "sql developer"] },
-      { role: "QA Engineer", keys: ["qa engineer", "testing engineer", "automation tester"] },
-      { role: "HR Manager", keys: ["hr manager", "human resources", "recruitment"] },
-      { role: "Sales Manager", keys: ["sales manager", "business development", "account manager"] },
-      { role: "Project Manager", keys: ["project manager", "pmp", "scrum master"] },
+      {
+        role: "UX/UI Designer",
+        keys: ["designer", "ui/ux", "figma", "graphic designer"],
+      },
+      {
+        role: "DevOps Engineer",
+        keys: ["devops", "sre", "kubernetes", "docker"],
+      },
+      {
+        role: "Full Stack Developer",
+        keys: ["full stack", "fullstack", "mstack"],
+      },
+      {
+        role: "AI Engineer",
+        keys: [
+          "ai engineer",
+          "artificial intelligence",
+          "deep learning",
+          "nlp",
+          "neural",
+        ],
+      },
+      {
+        role: "Machine Learning Engineer",
+        keys: ["machine learning engineer", "ml engineer", "mlops"],
+      },
+      {
+        role: "Cloud Engineer",
+        keys: ["cloud engineer", "aws", "azure", "gp"],
+      },
+      {
+        role: "Cybersecurity Analyst",
+        keys: [
+          "cybersecurity",
+          "security analyst",
+          "soc analyst",
+          "ethical hacker",
+        ],
+      },
+      {
+        role: "Mobile App Developer",
+        keys: ["mobile developer", "android", "ios", "flutter", "react native"],
+      },
+      {
+        role: "Blockchain Developer",
+        keys: ["blockchain", "web3", "solidity", "ethereum"],
+      },
+      {
+        role: "Database Administrator",
+        keys: ["database administrator", "dba", "sql developer"],
+      },
+      {
+        role: "QA Engineer",
+        keys: ["qa engineer", "testing engineer", "automation tester"],
+      },
+      {
+        role: "HR Manager",
+        keys: ["hr manager", "human resources", "recruitment"],
+      },
+      {
+        role: "Sales Manager",
+        keys: ["sales manager", "business development", "account manager"],
+      },
+      {
+        role: "Project Manager",
+        keys: ["project manager", "pmp", "scrum master"],
+      },
     ];
 
     // Priority 1: Match against our intelligence list
     for (const mapping of profileMapping) {
-      if (mapping.keys.some(k => inputLower.includes(k))) {
+      if (mapping.keys.some((k) => inputLower.includes(k))) {
         finalTitle = mapping.role;
         break;
       }
@@ -132,13 +191,17 @@ export default function UploadPage() {
     }
 
     // Safety limit
-    if (finalTitle.length > 50) finalTitle = finalTitle.substring(0, 47) + "...";
+    if (finalTitle.length > 50)
+      finalTitle = finalTitle.substring(0, 47) + "...";
 
-    localStorage.setItem("careerlens_job_data", JSON.stringify({
-      title: finalTitle || "Untitled Position",
-      description: jd,
-      timestamp: Date.now()
-    }));
+    localStorage.setItem(
+      "careerlens_job_data",
+      JSON.stringify({
+        title: finalTitle || "Untitled Position",
+        description: jd,
+        timestamp: Date.now(),
+      }),
+    );
 
     toast.success("SYSLOG: Analysis complete. Rerouting.");
     await new Promise((r) => setTimeout(r, 1200));
@@ -285,139 +348,135 @@ export default function UploadPage() {
             {(state === "idle" ||
               state === "dragging" ||
               state === "error") && (
-                <motion.div
-                  key="dropzone"
-                  initial={{
-                    opacity: 0,
-                    y: 30,
-                    scale: 0.95,
-                    filter: "blur(10px)",
-                  }}
-                  animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: -30, scale: 0.95, filter: "blur(10px)" }}
-                  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                  className={`brutalist-card p-6 md:p-12 text-center transition-colors relative overflow-hidden min-h-[450px] flex flex-col items-center justify-center ${state === "dragging"
+              <motion.div
+                key="dropzone"
+                initial={{
+                  opacity: 0,
+                  y: 30,
+                  scale: 0.95,
+                  filter: "blur(10px)",
+                }}
+                animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -30, scale: 0.95, filter: "blur(10px)" }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className={`brutalist-card p-6 md:p-12 text-center transition-colors relative overflow-hidden min-h-[450px] flex flex-col items-center justify-center ${
+                  state === "dragging"
                     ? "bg-[#0047FF]/5 border-[#0047FF]"
                     : "bg-[#050505]"
-                    }`}
-                  onDrop={onDrop}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setState("dragging");
-                  }}
-                  onDragLeave={() => setState("idle")}
+                }`}
+                onDrop={onDrop}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setState("dragging");
+                }}
+                onDragLeave={() => setState("idle")}
+              >
+                <div className="scan-line-acid opacity-20 pointer-events-none" />
+
+                {/* Job Description Block */}
+                <div
+                  className="w-full mb-8 text-left relative z-10"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="scan-line-acid opacity-20 pointer-events-none" />
-
-                  {/* Job Description Block */}
-                  <div
-                    className="w-full mb-8 text-left relative z-10"
-                    onClick={(e) => e.stopPropagation()}
+                  <label
+                    htmlFor="jd-input"
+                    className="font-mono text-[10px] text-[#0047FF] uppercase mb-2 block font-bold tracking-widest"
                   >
-                    <label
-                      htmlFor="jd-input"
-                      className="font-mono text-[10px] text-[#0047FF] uppercase mb-2 block font-bold tracking-widest"
-                    >
-                      [ TARGET JOB PROFILE NAME ONLY ]
-                    </label>
-                    <input
-                      id="jd-input"
-                      type="text"
-                      value={jd}
-                      onChange={(e) => setJd(e.target.value)}
-                      placeholder="e.g. FULL STACK DEVELOPER (No description needed)"
-                      className="w-full bg-[#000] border border-[#222] text-white p-4 font-mono text-xs focus:border-[#0047FF] focus:ring-1 focus:ring-[#0047FF] focus:outline-none h-12 transition-colors placeholder:text-[#333] uppercase"
-                    />
-                  </div>
-
-                  {/* Upload Block */}
-                  <div
-                    className="w-full flex-1 flex flex-col items-center justify-center cursor-pointer border border-dashed border-[#222] hover:border-[#D6FF00] hover:bg-[#111] transition-colors py-8 group"
-                    onClick={() => inputRef.current?.click()}
-                  >
-                    <input
-                      ref={inputRef}
-                      type="file"
-                      accept=".pdf,.docx"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleFile(f);
-                      }}
-                    />
-
-                    <motion.div
-                      animate={
-                        state === "dragging"
-                          ? { y: -10, scale: 1.05 }
-                          : { y: [0, -5, 0] }
-                      }
-                      transition={
-                        state === "dragging"
-                          ? { type: "spring", stiffness: 300 }
-                          : { repeat: Infinity, duration: 4, ease: "easeInOut" }
-                      }
-                      className="mb-8"
-                    >
-                      <div className="w-20 h-20 bg-[#D6FF00] flex items-center justify-center mx-auto border border-black shadow-[4px_4px_0_#fff] group-hover:scale-105 transition-transform">
-                        <Upload className="w-8 h-8 text-black" />
-                      </div>
-                    </motion.div>
-
-                    <h2 className="text-2xl font-bold uppercase text-white mb-2 tracking-tight">
-                      {state === "dragging"
-                        ? "RELEASE PAYLOAD"
-                        : "DRAG & DROP RESUME"}
-                    </h2>
-                    <div className="font-mono text-xs text-[#666] uppercase group-hover:text-[#D6FF00] transition-colors">
-                      OR CLICK TO BROWSE CPU
-                    </div>
-                  </div>
-
-                  {state === "error" && (
-                    <div className="mt-6 flex items-center justify-center gap-2 p-2 bg-[#FF2A00]/10 border border-[#FF2A00] text-[#FF2A00] font-mono text-xs uppercase w-full">
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                      INVALID FORMAT. ABORT.
-                    </div>
-                  )}
-
-                  {/* Analyze Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (file) {
-                        handleFile(file);
-                      } else {
-                        toast.error("Please upload your resume first.");
-                      }
-                    }}
-                    disabled={!file}
-                    className={`w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-black dark:font-bold text-sm uppercase tracking-wider transition-all duration-300 ${
-                      file
-                        ? "bg-black text-white hover:bg-gray-800 hover:shadow-lg dark:bg-[#D6FF00] dark:text-black dark:hover:bg-[#c4eb00] dark:hover:shadow-[0_0_40px_rgba(214,255,0,0.2)]"
-                        : "bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-[#888] cursor-not-allowed border border-gray-200 dark:border-[#3a3a3a]"
-                    }`}
-                  >
-                    {file ? (
-                      <>
-                        Analyze My Resume
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    ) : (
-                      "Upload Resume to Continue"
-                    )}
-                  </button>
-
-                  <p className="text-center text-gray-500 dark:text-[#888] text-xs font-mono uppercase tracking-wider font-bold dark:font-normal">
-                    Free plan —{" "}
-                    {2 -
-                      Math.min(
-                        2,
-                        (session?.user as any)?.analysisCount || 0,
-                      )}{" "}
-                    scans remaining
-                  </p>
+                    [ TARGET JOB PROFILE NAME ONLY ]
+                  </label>
+                  <input
+                    id="jd-input"
+                    type="text"
+                    value={jd}
+                    onChange={(e) => setJd(e.target.value)}
+                    placeholder="e.g. FULL STACK DEVELOPER (No description needed)"
+                    className="w-full bg-[#000] border border-[#222] text-white p-4 font-mono text-xs focus:border-[#0047FF] focus:ring-1 focus:ring-[#0047FF] focus:outline-none h-12 transition-colors placeholder:text-[#333] uppercase"
+                  />
                 </div>
+
+                {/* Upload Block */}
+                <div
+                  className="w-full flex-1 flex flex-col items-center justify-center cursor-pointer border border-dashed border-[#222] hover:border-[#D6FF00] hover:bg-[#111] transition-colors py-8 group"
+                  onClick={() => inputRef.current?.click()}
+                >
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept=".pdf,.docx"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFile(f);
+                    }}
+                  />
+
+                  <motion.div
+                    animate={
+                      state === "dragging"
+                        ? { y: -10, scale: 1.05 }
+                        : { y: [0, -5, 0] }
+                    }
+                    transition={
+                      state === "dragging"
+                        ? { type: "spring", stiffness: 300 }
+                        : { repeat: Infinity, duration: 4, ease: "easeInOut" }
+                    }
+                    className="mb-8"
+                  >
+                    <div className="w-20 h-20 bg-[#D6FF00] flex items-center justify-center mx-auto border border-black shadow-[4px_4px_0_#fff] group-hover:scale-105 transition-transform">
+                      <Upload className="w-8 h-8 text-black" />
+                    </div>
+                  </motion.div>
+
+                  <h2 className="text-2xl font-bold uppercase text-white mb-2 tracking-tight">
+                    {state === "dragging"
+                      ? "RELEASE PAYLOAD"
+                      : "DRAG & DROP RESUME"}
+                  </h2>
+                  <div className="font-mono text-xs text-[#666] uppercase group-hover:text-[#D6FF00] transition-colors">
+                    OR CLICK TO BROWSE CPU
+                  </div>
+                </div>
+
+                {state === "error" && (
+                  <div className="mt-6 flex items-center justify-center gap-2 p-2 bg-[#FF2A00]/10 border border-[#FF2A00] text-[#FF2A00] font-mono text-xs uppercase w-full">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    INVALID FORMAT. ABORT.
+                  </div>
+                )}
+
+                {/* Analyze Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (file) {
+                      handleFile(file);
+                    } else {
+                      toast.error("Please upload your resume first.");
+                    }
+                  }}
+                  disabled={!file}
+                  className={`w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-black dark:font-bold text-sm uppercase tracking-wider transition-all duration-300 ${
+                    file
+                      ? "bg-black text-white hover:bg-gray-800 hover:shadow-lg dark:bg-[#D6FF00] dark:text-black dark:hover:bg-[#c4eb00] dark:hover:shadow-[0_0_40px_rgba(214,255,0,0.2)]"
+                      : "bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-[#888] cursor-not-allowed border border-gray-200 dark:border-[#3a3a3a]"
+                  }`}
+                >
+                  {file ? (
+                    <>
+                      Analyze My Resume
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  ) : (
+                    "Upload Resume to Continue"
+                  )}
+                </button>
+
+                <p className="text-center text-gray-500 dark:text-[#888] text-xs font-mono uppercase tracking-wider font-bold dark:font-normal">
+                  Free plan —{" "}
+                  {2 - Math.min(2, (session?.user as any)?.analysisCount || 0)}{" "}
+                  scans remaining
+                </p>
               </motion.div>
             )}
 
