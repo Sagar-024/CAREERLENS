@@ -44,6 +44,7 @@ const terminalLines = [
 export default function UploadPage() {
   const { data: session, status } = useSession();
   const [state, setState] = useState<UploadState>("idle");
+  const [errorMessage, setErrorMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
@@ -109,7 +110,9 @@ export default function UploadPage() {
       } catch (err: any) {
         clearInterval(progressInterval);
         console.error(err);
-        toast.error(err.message || "Failed to analyze resume");
+        const msg = err.message || "Failed to analyze resume";
+        toast.error(msg);
+        setErrorMessage(msg.toUpperCase());
         setState("error");
       }
     },
@@ -127,10 +130,12 @@ export default function UploadPage() {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     if (!valid) {
       toast.error("ERR_INVALID_FORMAT: Require PDF/DOCX");
+      setErrorMessage("INVALID FORMAT. PDF OR DOCX REQUIRED.");
       setState("error");
       return;
     }
     setFile(f);
+    setErrorMessage("");
     setState("idle");
   }, []);
 
@@ -166,6 +171,7 @@ export default function UploadPage() {
     (e: React.DragEvent) => {
       e.preventDefault();
       setState("idle");
+      setErrorMessage("");
       const f = e.dataTransfer.files[0];
       if (f) handleFileSelection(f);
     },
@@ -383,9 +389,12 @@ export default function UploadPage() {
                 )}
 
                 {state === "error" && (
-                  <div className="mt-6 flex items-center justify-center gap-2 p-2 bg-[#FF2A00]/10 border border-[#FF2A00] text-[#FF2A00] font-mono text-xs uppercase w-full">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    INVALID FORMAT. ABORT.
+                  <div className="mt-6 flex flex-col items-center justify-center gap-2 p-3 bg-[#FF2A00]/10 border border-[#FF2A00] text-[#FF2A00] font-mono text-xs uppercase w-full text-center">
+                    <div className="flex gap-2 items-center font-bold">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      SYSTEM FAILURE
+                    </div>
+                    <div>{errorMessage}</div>
                   </div>
                 )}
 
