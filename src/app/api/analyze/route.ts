@@ -8,6 +8,7 @@ import { randomUUID } from "crypto";
 import axios from "axios";
 import FormData from "form-data";
 import { createReadStream } from "fs";
+import { tmpdir } from "os";
 
 const prisma = new PrismaClient();
 
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     const fileId = randomUUID();
-    tempFilePath = join("/tmp", `resume_${fileId}.pdf`);
+    tempFilePath = join(tmpdir(), `resume_${fileId}.pdf`);
     const bytes = await resumeFile.arrayBuffer();
     await writeFile(tempFilePath, Buffer.from(bytes));
 
@@ -123,11 +124,11 @@ export async function POST(request: NextRequest) {
     const savedAnalysis = await prisma.analysis.create({
       data: {
         userId: user.id,
-        finalScore: mlResult.score.final_score,
-        readinessLabel: mlResult.score.readiness_label,
-        matchedCount: mlResult.score.matched_count,
-        missingCount: mlResult.score.missing_count,
-        totalCount: mlResult.score.total_count,
+        finalScore: mlResult.final_score,
+        readinessLabel: mlResult.readiness_label,
+        matchedCount: mlResult.matched_skills?.length || 0,
+        missingCount: mlResult.missing_skills?.length || 0,
+        totalCount: mlResult.jd_skills?.length || 0,
         resumeSkills: mlResult.resume_skills,
         jdSkills: mlResult.jd_skills,
         matchedSkills: mlResult.matched_skills,
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Analysis failed. Please try again." },
+      { error: `Analysis failed: ${error.message || String(error)}` },
       { status: 500 },
     );
   } finally {
