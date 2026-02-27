@@ -17,6 +17,11 @@ const TIER_LIMITS: Record<string, number> = {
   pro: Infinity,
 };
 
+const ADMIN_EMAILS = [
+  "bishta2323@gmail.com",
+  "sagarkharal024@gmail.com",
+];
+
 export async function POST(request: NextRequest) {
   let tempFilePath: string | null = null;
 
@@ -36,7 +41,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const limit = TIER_LIMITS[user.tier] ?? 2;
+    const isWhitelisted = ADMIN_EMAILS.includes(session.user.email);
+    const effectiveTier = isWhitelisted ? "pro" : user.tier;
+
+    const limit = TIER_LIMITS[effectiveTier] ?? 2;
     if (user.analysisCount >= limit) {
       return NextResponse.json(
         {

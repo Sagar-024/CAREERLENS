@@ -452,14 +452,14 @@ export default function UploadPage() {
                     if (file) {
                       handleFile(file);
                     } else {
-                      toast.error("Please upload your resume first.");
+                      // Trigger file input click if no file is selected
+                      inputRef.current?.click();
                     }
                   }}
-                  disabled={!file}
                   className={`w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-black dark:font-bold text-sm uppercase tracking-wider transition-all duration-300 ${
                     file
                       ? "bg-black text-white hover:bg-gray-800 hover:shadow-lg dark:bg-[#D6FF00] dark:text-black dark:hover:bg-[#c4eb00] dark:hover:shadow-[0_0_40px_rgba(214,255,0,0.2)]"
-                      : "bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-[#888] cursor-not-allowed border border-gray-200 dark:border-[#3a3a3a]"
+                      : "bg-[#0047FF] text-white hover:bg-blue-700 dark:bg-[#222] dark:text-[#F3F3F3] dark:hover:bg-[#333] border border-transparent dark:border-[#333]"
                   }`}
                 >
                   {file ? (
@@ -468,7 +468,7 @@ export default function UploadPage() {
                       <ArrowRight className="w-4 h-4" />
                     </>
                   ) : (
-                    "Upload Resume to Continue"
+                    "Select Resume PDF"
                   )}
                 </button>
 

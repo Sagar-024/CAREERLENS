@@ -6,6 +6,11 @@ import NextAuth from "next-auth/next";
 
 const prisma = new PrismaClient();
 
+const ADMIN_EMAILS = [
+  "bishta2323@gmail.com",
+  "sagarkharal024@gmail.com",
+];
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -37,7 +42,8 @@ export const authOptions: NextAuthOptions = {
           select: { tier: true, analysisCount: true },
         });
         
-        session.user.tier = dbUser?.tier ?? token.tier ?? "free";
+        const isWhitelisted = session.user?.email && ADMIN_EMAILS.includes(session.user.email);
+        session.user.tier = isWhitelisted ? "pro" : (dbUser?.tier ?? token.tier ?? "free");
         session.user.analysisCount = dbUser?.analysisCount ?? token.analysisCount ?? 0;
       }
       return session;
