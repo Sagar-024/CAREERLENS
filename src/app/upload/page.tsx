@@ -116,54 +116,60 @@ export default function UploadPage() {
     [router, startTerminal, jd],
   );
 
-  const handleFile = useCallback(
-    async (f: File, isDemo = false) => {
-      if (!f) return;
-      if (status === "unauthenticated") {
-        setIsLoginModalOpen(true);
-        return;
-      }
+  const handleFileSelection = useCallback((f: File) => {
+    if (!f) return;
+    const fileName = f.name.toLowerCase();
+    const valid =
+      f.type === "application/pdf" ||
+      fileName.endsWith(".pdf") ||
+      fileName.endsWith(".docx") ||
+      f.type ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (!valid) {
+      toast.error("ERR_INVALID_FORMAT: Require PDF/DOCX");
+      setState("error");
+      return;
+    }
+    setFile(f);
+    setState("idle");
+  }, []);
 
-      const tier = (session?.user as any)?.tier || "free";
-      const analysisCount = (session?.user as any)?.analysisCount || 0;
+  const startAnalysis = useCallback(async () => {
+    if (!file) {
+      toast.error("ERR_MISSING_DATA: No resume payload detected.");
+      return;
+    }
+    if (status === "unauthenticated") {
+      setIsLoginModalOpen(true);
+      return;
+    }
 
-      if (tier === "free" && analysisCount >= 2) {
-        toast.error("Free limit reached. Upgrade to Pro for unlimited scans.");
-        router.push("/#pricing");
-        return;
-      }
-      if (!isDemo && !jd.trim()) {
-        toast.error("ERR_MISSING_DATA: Target Job Description Required.");
-        return;
-      }
-      const fileName = f.name.toLowerCase();
-      const valid =
-        f.type === "application/pdf" ||
-        fileName.endsWith(".pdf") ||
-        fileName.endsWith(".docx") ||
-        f.type ===
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-      if (!valid) {
-        toast.error("ERR_INVALID_FORMAT: Require PDF/DOCX");
-        setState("error");
-        return;
-      }
-      setFile(f);
-      setState("uploading");
-      await new Promise((r) => setTimeout(r, 1000));
-      simulateAnalysis(f);
-    },
-    [simulateAnalysis, jd, status, session, router],
-  );
+    const tier = (session?.user as any)?.tier || "free";
+    const analysisCount = (session?.user as any)?.analysisCount || 0;
+
+    if (tier === "free" && analysisCount >= 2) {
+      toast.error("Free limit reached. Upgrade to Pro for unlimited scans.");
+      router.push("/#pricing");
+      return;
+    }
+    if (!jd.trim()) {
+      toast.error("ERR_MISSING_DATA: Target Job Description Required.");
+      return;
+    }
+
+    setState("uploading");
+    await new Promise((r) => setTimeout(r, 1000));
+    simulateAnalysis(file);
+  }, [simulateAnalysis, file, jd, status, session, router]);
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setState("idle");
       const f = e.dataTransfer.files[0];
-      if (f) handleFile(f);
+      if (f) handleFileSelection(f);
     },
-    [handleFile],
+    [handleFileSelection],
   );
 
   return (
@@ -315,7 +321,7 @@ export default function UploadPage() {
                       className="hidden"
                       onChange={(e) => {
                         const f = e.target.files?.[0];
-                        if (f) handleFile(f);
+                        if (f) handleFileSelection(f);
                       }}
                     />
 
@@ -388,7 +394,7 @@ export default function UploadPage() {
                   onClick={(e) => {
                     e.stopPropagation();
                     if (file) {
-                      handleFile(file);
+                      startAnalysis();
                     } else {
                       // Trigger file input click if no file is selected
                       inputRef.current?.click();
