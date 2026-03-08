@@ -24,16 +24,18 @@ $$
 
 ## 2. System Architecture: The 6-Stage Async Pipeline
 
+![System Architecture](assets/architecture.png)
+
 The application operates on a decoupled microservice architecture, segregating the Next.js App Router presentation layer from the compute-intensive Python FastAPI worker.
 
 **The 6-Stage Pipeline:**
 
-1. **Ingestion**: The client transmits binary PDF payloads and plain-text job descriptions to the Next.js API via `multipart/form-data`.
-2. **State Initialization**: The Next.js edge runtime registers a `PENDING` job state via Prisma ORM and immediately returns a `202 Accepted` HTTP response to unblock the client thread.
-3. **Async Handoff**: The frontend server delegates the computational payload to the localized FastAPI machine learning worker via a non-blocking internal request.
-4. **Extraction & NER**: The Python worker utilizes `PyMuPDF` to rip the binary PDF text streams in under 20ms. The extracted text is subsequently pushed into a `spaCy` Named Entity Recognition (NER) pipeline to isolate targeted technical entities.
-5. **Vectorization**: An in-memory, instantiated SBERT model pre-processes the isolated texts, calculating precise cosine similarity metrics across the derived tensors.
-6. **Webhook Resolution**: The FastAPI microservice initiates a secure, authenticated `POST` request back to the Next.js webhook. The PostgreSQL database, via Prisma, atomically updates the job state to `COMPLETED`, allowing the ongoing UI polling mechanisms to organically resolve and render the analysis payload.
+1. **Stage 1: Smart Parser**: Uses `pdfplumber` for noise removal and `SmartResumeParser` to detect sections, infer seniority, and score institution tiers.
+2. **Stage 2: Skill Extraction**: Scans against a 300+ skill taxonomy using implicit and explicit extraction to recover 25% more skills than keyword baselines.
+3. **Stage 3: Semantic Matching**: Employs the SBERT Bi-Encoder (`all-MiniLM-L6-v2`) to compute cosine similarity across exact, semantic, and weak matches.
+4. **Stage 4: Ontology Graph**: Utilizes `NetworkX DiGraph` (59 nodes, 58 edges) for 2-hop path detection (e.g., Docker -> Kubernetes) to calculate skill transferability.
+5. **Stage 5: Multi-Dim Scoring**: Computes the final grade across 5 Dimensions: Technical (45%), Experience (30%), Domain (15%), and Education (10%).
+6. **Stage 6: Explainability & Report Gen**: Uses SHAP-style Explainers to calculate exact point contributions and generates a PDF report detailing interview intelligence and skill gaps.
 
 ## 3. Upcoming Roadmap: Explainable AI (XAI)
 
