@@ -54,7 +54,10 @@
   },
   "pnpm": {
     "approvedBuilds": [
-      "msw"
+      "msw",
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
     ]
   }
 }

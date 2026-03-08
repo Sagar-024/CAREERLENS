@@ -72,12 +72,12 @@ Open a discrete terminal instance, then execute:
 
 ```bash
 # Install Node dependencies
-npm install
+pnpm install
 
 # Push the local development schema to PostgreSQL and generate the Prisma Client
-npx prisma db push
-npx prisma generate
+pnpm dlx prisma db push
+pnpm dlx prisma generate
 
 # Initialize the Next.js development server
-npm run dev
+pnpm dev
 ```
