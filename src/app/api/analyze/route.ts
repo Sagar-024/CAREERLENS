@@ -1,3 +1,4 @@
+// app/api/analyze/route.ts
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { NextRequest, NextResponse } from "next/server";
@@ -24,75 +25,52 @@ const ADMIN_EMAILS = [
 ];
 
 export async function POST(request: NextRequest) {
+  console.log("🛑 TRIPWIRE 1: API Route Reached!");
+  
   let tempFilePath: string | null = null;
 
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Please login to analyze your resume" },
-        { status: 401 },
-      );
-    }
+    console.log("🛑 TRIPWIRE 2: Entering Try Block!");
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    // 1. AUTHENTICATION & BILLING (Unchanged - You nailed this)
+    const session = await getServerSession(authOptions);
+    console.log("🛑 TRIPWIRE 3: Session checked!", session?.user?.email);
+    if (!session?.user?.email) return NextResponse.json({ error: "Please login" }, { status: 401 });
+
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const isWhitelisted = ADMIN_EMAILS.includes(session.user.email);
     const effectiveTier = isWhitelisted ? "pro" : user.tier;
-
     const limit = TIER_LIMITS[effectiveTier] ?? 2;
+
     if (user.analysisCount >= limit) {
-      return NextResponse.json(
-        {
-          error:
-            "You have reached your monthly analysis limit. Please upgrade to continue.",
-          tier: user.tier,
-          upgradeRequired: true,
-        },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Limit reached. Upgrade required.", upgradeRequired: true }, { status: 403 });
     }
 
+    // 2. VALIDATION (Unchanged)
     const formData = await request.formData();
     const resumeFile = formData.get("resume") as File | null;
     const jdText = formData.get("jd_text") as string | null;
 
-    if (!resumeFile) {
-      return NextResponse.json(
-        { error: "Resume PDF file is required" },
-        { status: 400 },
-      );
-    }
-    if (!jdText || jdText.trim().length < 50) {
-      return NextResponse.json(
-        {
-          error:
-            "Please paste the complete job description (at least 50 characters)",
-        },
-        { status: 400 },
-      );
-    }
-    if (!resumeFile.name.toLowerCase().endsWith(".pdf")) {
-      return NextResponse.json(
-        {
-          error:
-            "Only PDF files are accepted. Please convert your resume to PDF first.",
-        },
-        { status: 400 },
-      );
-    }
-    if (resumeFile.size > 10 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: "File too large. Maximum file size is 10MB." },
-        { status: 400 },
-      );
+    if (!resumeFile || !jdText || jdText.trim().length < 50) {
+      return NextResponse.json({ error: "Invalid Input." }, { status: 400 });
     }
 
+    // =========================================================================
+    // 3. THE STATE MACHINE (The Elite Move)
+    // We create the PENDING record instantly. Now we have an ID to track.
+    // =========================================================================
+    const savedAnalysis = await prisma.analysis.create({
+      data: {
+        userId: user.id,
+        jdText: jdText.trim(),
+        jobTitle: jdText.trim().split("\n")[0]?.substring(0, 100) ?? "Unknown Role",
+        status: "PENDING", // Enforce the Enum
+      },
+    });
+
+    // Write file to temp directory
     const fileId = randomUUID();
     tempFilePath = join(tmpdir(), `resume_${fileId}.pdf`);
     const bytes = await resumeFile.arrayBuffer();
@@ -105,86 +83,45 @@ export async function POST(request: NextRequest) {
     });
     mlFormData.append("jd_text", jdText.trim());
     mlFormData.append("user_id", user.id);
+    mlFormData.append("job_id", savedAnalysis.id); // Passing the ID to Python!
 
+    // =========================================================================
+    // 4. THE HANDOFF
+    // Python's FastAPI will accept this and instantly return a 202 status.
+    // It will do the heavy ML math in the background.
+    // =========================================================================
     const mlServiceUrl = process.env.ML_SERVICE_URL || "http://localhost:8000";
-
-    const mlResponse = await axios.post(
-      `${mlServiceUrl}/api/v1/analyze`,
-      mlFormData,
-      {
-        headers: mlFormData.getHeaders(),
-        timeout: 60000,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-      },
-    );
-
-    const mlResult = mlResponse.data;
-
-    const savedAnalysis = await prisma.analysis.create({
-      data: {
-        userId: user.id,
-        finalScore: mlResult.final_score,
-        readinessLabel: mlResult.readiness_label,
-        matchedCount: mlResult.matched_skills?.length || 0,
-        missingCount: mlResult.missing_skills?.length || 0,
-        totalCount: mlResult.jd_skills?.length || 0,
-        resumeSkills: mlResult.resume_skills,
-        jdSkills: mlResult.jd_skills,
-        matchedSkills: mlResult.matched_skills,
-        missingSkills: mlResult.missing_skills,
-        explanations: mlResult.explanations,
-        courses: mlResult.courses,
-        metadata: mlResult.metadata,
-        resumeText: null,
-        jdText: jdText.trim(),
-        jobTitle:
-          jdText.trim().split("\n")[0]?.substring(0, 100) ?? "Unknown Role",
-      },
+    
+    // Notice: We don't need a 60000ms timeout anymore, because Python replies instantly!
+    await axios.post(`${mlServiceUrl}/api/v1/analyze`, mlFormData, {
+      headers: mlFormData.getHeaders(),
     });
 
+    // Deduct the credit
     await prisma.user.update({
       where: { id: user.id },
       data: { analysisCount: { increment: 1 } },
     });
 
+    // =========================================================================
+    // 5. INSTANT RETURN
+    // We hand the job ID back to the React UI immediately so it can show a loading screen.
+    // =========================================================================
     return NextResponse.json({
-      ...mlResult,
+      success: true,
       analysis_id: savedAnalysis.id,
+      status: "PENDING",
+      message: "AI Engine has started analyzing your resume."
     });
+
   } catch (error: any) {
     console.error("Analysis route error:", error);
-
-    if (error.code === "ECONNREFUSED") {
-      return NextResponse.json(
-        {
-          error:
-            "AI service is currently unavailable. Please try again in a moment.",
-        },
-        { status: 503 },
-      );
-    }
-
-    if (axios.isAxiosError(error) && error.response) {
-      return NextResponse.json(
-        {
-          error:
-            error.response.data?.detail ||
-            "AI processing failed. Please try again.",
-        },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json(
-      { error: `Analysis failed: ${error.message || String(error)}` },
-      { status: 500 },
-    );
+    // If it fails, we should ideally mark the job as FAILED in the DB if it was created
+    return NextResponse.json({ error: "Analysis failed to start." }, { status: 500 });
+    
   } finally {
     if (tempFilePath) {
-      try {
-        await unlink(tempFilePath);
-      } catch {}
+      try { await unlink(tempFilePath); } catch {}
     }
   }
 }

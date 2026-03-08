@@ -1,307 +1,214 @@
-"use client";
+import { PrismaClient } from "@prisma/client";
+import { notFound, redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import ScoreRing from "@/components/ui/ScoreRing";
+import SBERTRadarChart from "@/components/ui/SBERTRadarChart";
+import SHAPInsightDeck from "@/components/ui/SHAPInsightDeck";
+import CourseRecommendations from "@/components/ui/CourseRecommendations";
 
-import { useEffect, useState, use } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Label,
-} from "recharts";
-import { ArrowLeft, BookOpen, AlertCircle, CheckCircle } from "lucide-react";
+const prisma = new PrismaClient();
 
-export default function ResultsPage({
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function ResultsPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const unwrappedParams = use(params);
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const session = await getServerSession(authOptions);
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-      return;
-    }
+  if (!session?.user?.email) {
+    redirect("/login");
+  }
 
-    if (status === "authenticated") {
-      fetch(`/api/analysis/${unwrappedParams.id}`)
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to fetch analysis");
-          return res.json();
-        })
-        .then((data) => {
-          setData(data);
-          setLoading(false);
-          // Trigger confetti if score > 80
-          if (data.finalScore >= 80) {
-            import("canvas-confetti").then((confetti) => {
-              confetti.default({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 },
-              });
-            });
-          }
-        })
-        .catch((err) => {
-          toast.error("Could not load analysis results");
-          router.push("/dashboard");
-        });
-    }
-  }, [unwrappedParams.id, status, router]);
+  const { id } = await params;
 
-  if (loading) {
+  const data = await prisma.analysis.findUnique({
+    where: { id },
+  });
+
+  if (!data) {
+    notFound();
+  }
+
+  if (data.status === "FAILED") {
     return (
-      <div className="min-h-screen bg-[#fafafa] dark:bg-[#050505] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-[#0047FF] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-[#0a0a0a] to-black text-zinc-100 flex items-center justify-center p-6">
+        <div className="bg-white/5 backdrop-blur-2xl border border-red-500/20 rounded-[2.5rem] p-10 max-w-md text-center shadow-2xl">
+          <h2 className="text-3xl font-medium text-red-400 mb-3 tracking-tight">
+            Analysis Failed
+          </h2>
+          <p className="text-zinc-500 text-sm mb-8 font-light text-balance">
+            The AI engine was unable to extract SBERT embeddings from this
+            document or the job description.
+          </p>
+          <Link
+            href="/upload"
+            className="px-8 py-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full transition-colors text-sm font-medium"
+          >
+            Return to Upload
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const scoreData = [
-    { name: "Score", value: data.finalScore },
-    { name: "Remaining", value: 100 - data.finalScore },
-  ];
-
-  const chartData = Object.entries(data.explanations || {})
-    .map(([name, value]) => ({
-      name: name.length > 15 ? name.substring(0, 15) + "..." : name,
-      full_name: name,
-      value: typeof value === "number" ? Number(value.toFixed(1)) : 0,
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 5);
+  if (data.status !== "COMPLETED") {
+    // Elegant fallback skeleton if page is loaded while processing
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-[#0a0a0a] to-black text-zinc-100 flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-white/60 animate-spin"></div>
+          <p className="text-zinc-400 font-light tracking-wide">
+            Retrieving Insights...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#fafafa] dark:bg-[#080808] pt-8 pb-16 px-4 md:px-6">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-[#0a0a0a] to-black text-zinc-100 pt-10 pb-24 px-4 sm:px-6 md:px-8 selection:bg-white/20">
       <div className="max-w-6xl mx-auto space-y-8">
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors text-sm font-semibold uppercase tracking-wider"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Dashboard
-        </button>
+        {/* Navigation & Header */}
+        <div className="flex items-center justify-between mb-2">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-sm group"
+          >
+            <div className="p-2 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors border border-transparent group-hover:border-white/10">
+              <ArrowLeft className="w-4 h-4" />
+            </div>
+            <span className="font-light">Dashboard</span>
+          </Link>
+          <div className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-zinc-400 font-mono tracking-widest uppercase flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            SBERT Pipeline Active
+          </div>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Top Grid: Score & Radar */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Score Card */}
-          <div className="brutalist-card p-8 lg:col-span-2 flex flex-col items-center justify-center text-center">
-            <h2 className="text-2xl font-black uppercase text-gray-900 dark:text-white mb-2">
-              Overall Readiness
+          <div className="lg:col-span-1 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-10 flex flex-col items-center justify-center shadow-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent pointer-events-none"></div>
+
+            <h2 className="text-xl font-medium tracking-tight text-white mb-10 z-10 w-full text-center">
+              Readiness Match
             </h2>
-            <p className="text-gray-500 mb-8 max-w-md">
-              Based on SBERT semantic analysis of your resume against the
-              provided job description.
-            </p>
 
-            <div className="h-64 w-full max-w-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={scoreData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={80}
-                    outerRadius={100}
-                    startAngle={90}
-                    endAngle={-270}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    <Cell
-                      fill={
-                        data.finalScore >= 80
-                          ? "#0047FF"
-                          : data.finalScore >= 50
-                            ? "#FFBD00"
-                            : "#FF2A00"
-                      }
-                    />
-                    <Cell fill="#E5E7EB" className="dark:fill-[#222]" />
-                    <Label
-                      value={`${Math.round(data.finalScore)}%`}
-                      position="center"
-                      className="text-5xl font-black fill-current dark:fill-white text-[#0047FF]"
-                      style={{ fontSize: "3rem", fontWeight: 900 }}
-                    />
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="z-10 mb-10">
+              <ScoreRing
+                score={data.finalScore ?? 0}
+                grade={data.readinessLabel ?? "C"}
+              />
             </div>
 
-            <div className="mt-8 flex gap-8">
-              <div className="text-center">
-                <div className="text-3xl font-black text-gray-900 dark:text-white tabular-nums">
-                  {data.matchedCount}
-                </div>
-                <div className="text-xs uppercase font-bold text-gray-500">
-                  Skills Matched
-                </div>
+            <div className="w-full flex justify-between items-center px-4 pt-8 border-t border-white/10 z-10">
+              <div className="flex flex-col items-start">
+                <span className="text-emerald-400 font-medium text-2xl">
+                  {data.matchedCount ?? 0}
+                </span>
+                <span className="text-zinc-500 text-[10px] uppercase tracking-widest mt-1">
+                  Matched
+                </span>
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-black text-[#FF2A00] tabular-nums">
-                  {data.missingCount}
-                </div>
-                <div className="text-xs uppercase font-bold text-gray-500">
-                  Skills Missing
-                </div>
+              <div className="h-10 w-px bg-white/10"></div>
+              <div className="flex flex-col items-end">
+                <span className="text-red-400 font-medium text-2xl">
+                  {data.missingCount ?? 0}
+                </span>
+                <span className="text-zinc-500 text-[10px] uppercase tracking-widest mt-1">
+                  Missing
+                </span>
               </div>
             </div>
           </div>
 
-          {/* SHAP Chart */}
-          <div className="brutalist-card p-6 flex flex-col">
-            <h3 className="text-lg font-black uppercase text-gray-900 dark:text-white mb-2">
-              Impact Factors (SHAP)
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Skills positively or negatively affecting your score the most.
-            </p>
-            <div className="flex-1 min-h-[250px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartData}
-                  layout="vertical"
-                  margin={{ left: 0, right: 0 }}
-                >
-                  <XAxis type="number" hide />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    width={100}
-                    tick={{ fontSize: 12, className: "dark:fill-gray-400" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "transparent" }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-gray-900 border border-gray-700 p-2 text-white text-xs">
-                            <span className="font-bold">
-                              {payload[0].payload.full_name}
-                            </span>
-                            : {payload[0].value > 0 ? "+" : ""}
-                            {payload[0].value}%
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                    {chartData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.value > 0 ? "#0047FF" : "#FF2A00"}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Detailed Insights */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="brutalist-card p-6 border-t-4 border-t-green-500">
-            <div className="flex items-center gap-3 mb-6">
-              <CheckCircle className="text-green-500 w-6 h-6" />
-              <h3 className="text-xl font-black uppercase text-gray-900 dark:text-white">
-                Matched Skills
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(data.matchedSkills || []).map((skill: string) => (
-                <span
-                  key={skill}
-                  className="px-3 py-1 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 text-sm font-semibold rounded-full border border-green-200 dark:border-green-500/20"
-                >
-                  {skill}
-                </span>
-              ))}
-              {(!data.matchedSkills || data.matchedSkills.length === 0) && (
-                <p className="text-gray-500 italic">No skills matched.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="brutalist-card p-6 border-t-4 border-t-[#FF2A00]">
-            <div className="flex items-center gap-3 mb-6">
-              <AlertCircle className="text-[#FF2A00] w-6 h-6" />
-              <h3 className="text-xl font-black uppercase text-gray-900 dark:text-white">
-                Missing Skills
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(data.missingSkills || []).map((skill: string) => (
-                <span
-                  key={skill}
-                  className="px-3 py-1 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-sm font-semibold rounded-full border border-red-200 dark:border-red-500/20"
-                >
-                  {skill}
-                </span>
-              ))}
-              {(!data.missingSkills || data.missingSkills.length === 0) && (
-                <p className="text-gray-500 italic">
-                  All required skills found!
+          {/* Radar Chart Card */}
+          <div className="lg:col-span-2 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative flex flex-col">
+            <div className="flex flex-col md:flex-row md:items-start justify-between mb-2">
+              <div>
+                <h3 className="text-xl font-medium text-white tracking-tight">
+                  Semantic Radar
+                </h3>
+                <p className="text-zinc-400 text-sm font-light mt-2 max-w-sm text-balance">
+                  Ontological mapping of your extracted competencies against the
+                  desired job description.
                 </p>
-              )}
+              </div>
+              <div className="mt-4 md:mt-0 flex gap-4 text-xs font-light text-zinc-500">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[rgba(56,189,248,0.4)] border border-[rgba(56,189,248,0.8)]"></span>
+                  Your Match
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full border border-white/20"></span>
+                  Target Model
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 w-full relative mt-4">
+              <SBERTRadarChart
+                matched={(data.matchedSkills as string[]) || []}
+                missing={(data.missingSkills as string[]) || []}
+              />
             </div>
           </div>
         </div>
 
-        {/* Course Recommendations */}
-        {data.courses && data.courses.length > 0 && (
-          <div className="brutalist-card p-8 bg-[#0047FF] dark:bg-[#D6FF00] border-black dark:border-[#222]">
-            <div className="flex items-center gap-3 mb-8">
-              <BookOpen className="text-white dark:text-black w-8 h-8" />
-              <h3 className="text-2xl font-black uppercase text-white dark:text-black">
-                Recommended Courses to Close the Gap
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data.courses.map((course: any, idx: number) => (
-                <a
-                  key={idx}
-                  href={course.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-white dark:bg-black p-5 border-2 border-transparent hover:border-black dark:hover:border-white transition-colors group relative overflow-hidden"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-[#0047FF] dark:group-hover:text-[#D6FF00] transition-colors pr-8">
-                      {course.title}
-                    </h4>
-                    <span className="font-mono text-xs font-bold uppercase bg-gray-100 dark:bg-[#222] px-2 py-1 flex-shrink-0">
-                      {course.platform}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Targets:{" "}
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {course.skill}
-                    </span>
-                  </p>
-                </a>
-              ))}
-            </div>
+        {/* SHAP Explainability Deck */}
+        <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-20 pointer-events-none">
+            <svg
+              width="120"
+              height="120"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              className="text-zinc-500"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              <path d="M2 12h20"></path>
+            </svg>
           </div>
-        )}
+
+          <div className="mb-8 max-w-xl relative tracking-tight">
+            <h3 className="text-xl font-medium text-white">
+              Additive Explanations (SHAP)
+            </h3>
+            <p className="text-zinc-400 text-sm font-light mt-2">
+              Visualizing the exact quantitative feature-importance weights
+              assigned by the local decision tree that positively or negatively
+              impacted your final score.
+            </p>
+          </div>
+
+          <div className="relative">
+            <SHAPInsightDeck
+              explanations={(data.explanations as Record<string, number>) || {}}
+            />
+          </div>
+        </div>
+
+        {/* Course Intelligence row */}
+        <div className="pt-4">
+          <div className="mb-6 px-4 tracking-tight">
+            <h3 className="text-xl font-medium text-white">Gap Intelligence</h3>
+            <p className="text-zinc-400 text-sm font-light mt-1">
+              Algorithmically recommended pathways to acquire your missing
+              top-weighted skills.
+            </p>
+          </div>
+
+          <CourseRecommendations courses={(data.courses as any[]) || []} />
+        </div>
       </div>
     </div>
   );

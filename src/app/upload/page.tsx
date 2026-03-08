@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -8,51 +8,43 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  ArrowUpRight,
   X,
-  Sparkles,
+  ArrowUpRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import LoginModal from "@/components/ui/LoginModal";
-
-type UploadState =
-  | "idle"
-  | "dragging"
-  | "uploading"
-  | "analyzing"
-  | "done"
-  | "error";
-
-const ADMIN_EMAILS = ["bishta2323@gmail.com", "sagarkharal024@gmail.com"];
-
-const TERMINAL_LINES = [
-  "Initializing analysis engine…",
-  "Parsing resume content…",
-  "Running SBERT semantic encoder…",
-  "Extracting skill vectors…",
-  "Matching against job description…",
-  "Computing SHAP feature importance…",
-  "Building recommendations…",
-];
+import { useAnalysis } from "@/hooks/useAnalysis";
 
 export default function UploadPage() {
-  const { data: session, status } = useSession();
-  const [state, setState] = useState<UploadState>("idle");
-  const [errorMsg, setErrorMsg] = useState("");
+  const router = useRouter();
+  const { data: session, status: authStatus } = useSession();
+  const {
+    startAnalysis,
+    status: analysisStatus,
+    result,
+    error,
+    setStatus,
+  } = useAnalysis();
+
   const [file, setFile] = useState<File | null>(null);
   const [jd, setJd] = useState("");
-  const [progress, setProgress] = useState(0);
-  const [termLines, setTermLines] = useState<string[]>([]);
+  const [isHovering, setIsHovering] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
 
-  const email = session?.user?.email ?? "";
-  const isAdmin = ADMIN_EMAILS.includes(email);
-  const tier = isAdmin ? "pro" : ((session?.user as any)?.tier ?? "free");
-  const analysisCount = (session?.user as any)?.analysisCount ?? 0;
-  const scansLeft = isAdmin ? Infinity : Math.max(0, 2 - analysisCount);
+  // Auto-redirect when analysis is complete
+  useEffect(() => {
+    if (analysisStatus === "COMPLETED" && result) {
+      const id = result.id || result.analysis_id;
+      if (id) {
+        toast.success("Analysis complete. Redirecting...");
+        setTimeout(() => {
+          router.push(`/results/${id}`);
+        }, 1500);
+      }
+    }
+  }, [analysisStatus, result, router]);
 
   const handleFile = useCallback((f: File) => {
     const name = f.name.toLowerCase();
@@ -62,566 +54,220 @@ export default function UploadPage() {
       name.endsWith(".docx") ||
       f.type ===
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
     if (!valid) {
       toast.error("Only PDF or DOCX files are supported.");
       return;
     }
     setFile(f);
-    setErrorMsg("");
-    setState("idle");
   }, []);
 
-  const startAnalysis = useCallback(async () => {
-    if (!file) {
-      toast.error("Please select a resume file first.");
-      return;
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsHovering(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
     }
-    if (status === "unauthenticated") {
-      setLoginOpen(true);
+  };
+
+  const handleAnalyze = () => {
+    if (!file) {
+      toast.error("Please drop your resume first.");
       return;
     }
     if (!jd.trim() || jd.trim().length < 10) {
-      toast.error("Please enter a more complete job description.");
+      toast.error("Please provide a job description.");
       return;
     }
-    if (!isAdmin && tier === "free" && analysisCount >= 2) {
-      toast.error("Free limit reached. Upgrade to Pro for unlimited scans.");
-      router.push("/#pricing");
+    if (authStatus === "unauthenticated") {
+      setLoginOpen(true);
       return;
     }
 
-    setState("analyzing");
-    setProgress(0);
-    setTermLines([]);
-
-    (async () => {
-      for (const line of TERMINAL_LINES) {
-        await new Promise((r) => setTimeout(r, 400 + Math.random() * 200));
-        setTermLines((prev) => [...prev, line]);
-      }
-    })();
-
-    const tick = setInterval(() => {
-      setProgress((p) => (p < 85 ? p + (Math.random() * 10 + 3) : p));
-    }, 700);
-
-    try {
-      const form = new FormData();
-      form.append("resume", file);
-      form.append("jd_text", jd.trim());
-      const res = await fetch("/api/analyze", { method: "POST", body: form });
-      const data = await res.json();
-
-      clearInterval(tick);
-      setProgress(100);
-
-      if (!res.ok) {
-        if (data.upgradeRequired) {
-          toast.error(data.error);
-          router.push("/#pricing");
-          return;
-        }
-        throw new Error(data.error || "Analysis failed");
-      }
-
-      await new Promise((r) => setTimeout(r, 600));
-      setState("done");
-      toast.success("Analysis complete — redirecting to results…");
-      await new Promise((r) => setTimeout(r, 1000));
-      router.push(`/results/${data.analysis_id}`);
-    } catch (err: any) {
-      clearInterval(tick);
-      const msg = err.message || "Something went wrong.";
-      toast.error(msg);
-      setErrorMsg(msg);
-      setState("error");
-    }
-  }, [file, jd, status, isAdmin, tier, analysisCount, router]);
-
-  const isRunning = state === "uploading" || state === "analyzing";
+    startAnalysis(file, jd);
+  };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 sm:px-6 pt-4 pb-24"
-      style={{ background: "var(--bg)" }}
-    >
-      <div className="w-full max-w-5xl mx-auto flex flex-col lg:flex-row gap-14 lg:gap-20 lg:items-start">
-        {/* ── Left: Info ── */}
-        <div className="lg:w-[360px] shrink-0">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-[#0a0a0a] to-black flex flex-col items-center justify-center p-4 selection:bg-white/20">
+      <div className="w-full max-w-2xl mx-auto flex flex-col pt-12">
+        <div className="text-center mb-10">
+          <motion.h1
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="text-4xl md:text-5xl font-medium tracking-tight text-zinc-100 mb-4"
           >
-            <span className="badge mb-5">AI Resume Analysis</span>
-
-            <h1
-              className="text-3xl md:text-4xl font-bold tracking-tight leading-tight mb-4"
-              style={{ color: "var(--text)" }}
-            >
-              Upload your resume.{" "}
-              <span style={{ color: "var(--accent)" }}>Know your score.</span>
-            </h1>
-
-            <p
-              className="text-[15px] leading-relaxed mb-10"
-              style={{ color: "var(--text-body)" }}
-            >
-              Paste a job description and upload your resume. Our SBERT engine
-              returns your readiness score in about 30 seconds.
-            </p>
-
-            <div className="space-y-5 mb-8">
-              {[
-                {
-                  label: "Private & secure",
-                  sub: "Files deleted immediately after analysis",
-                },
-                {
-                  label: "~30 second results",
-                  sub: "SBERT semantic matching engine",
-                },
-                {
-                  label: "Actionable insights",
-                  sub: "Skills gaps + course recommendations",
-                },
-              ].map((item) => (
-                <div key={item.label} className="flex gap-3.5">
-                  <div
-                    className="w-1.5 h-1.5 rounded-full mt-2 shrink-0"
-                    style={{ background: "var(--accent)" }}
-                  />
-                  <div>
-                    <div
-                      className="text-sm font-medium"
-                      style={{ color: "var(--text)" }}
-                    >
-                      {item.label}
-                    </div>
-                    <div
-                      className="text-xs mt-0.5"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      {item.sub}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {status === "authenticated" && (
-              <div
-                className="flex items-center gap-2.5 p-3 rounded-xl"
-                style={{
-                  background: "var(--bg-card)",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                {isAdmin ? (
-                  <>
-                    <Sparkles
-                      className="w-3.5 h-3.5 shrink-0"
-                      style={{ color: "var(--accent)" }}
-                    />
-                    <span
-                      className="text-sm"
-                      style={{ color: "var(--text-body)" }}
-                    >
-                      <strong style={{ color: "var(--text)" }}>Pro</strong> —
-                      Unlimited analyses
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <div
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{
-                        background:
-                          scansLeft > 0 ? "var(--positive)" : "var(--negative)",
-                      }}
-                    />
-                    <span
-                      className="text-sm"
-                      style={{ color: "var(--text-body)" }}
-                    >
-                      {scansLeft > 0
-                        ? `Free · ${scansLeft} scan${scansLeft === 1 ? "" : "s"} remaining`
-                        : "Free limit reached"}
-                    </span>
-                  </>
-                )}
-              </div>
-            )}
-          </motion.div>
+            Analysis Engine
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-zinc-400 text-lg md:text-xl font-light"
+          >
+            Upload your resume and the target role description.
+          </motion.p>
         </div>
 
-        {/* ── Right: Form Card ── */}
-        <div className="flex-1">
-          <AnimatePresence mode="wait">
-            {(state === "idle" ||
-              state === "dragging" ||
-              state === "error") && (
-              <motion.div
-                key="form"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="glass-card overflow-hidden"
-              >
-                {/* Step 1 */}
-                <div
-                  className="p-6 border-b"
-                  style={{ borderColor: "var(--border)" }}
-                >
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div
-                      className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold"
-                      style={{
-                        background: "var(--accent-dim)",
-                        color: "var(--accent)",
-                      }}
+        <AnimatePresence mode="wait">
+          {/* POLLING STATE */}
+          {analysisStatus === "POLLING" ||
+          analysisStatus === "STARTING" ||
+          (analysisStatus === "COMPLETED" && result) ? (
+            <motion.div
+              key="polling"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex flex-col items-center justify-center py-24 space-y-8 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl"
+            >
+              {analysisStatus === "COMPLETED" ? (
+                <CheckCircle2 className="w-16 h-16 text-emerald-400 animate-in zoom-in duration-500" />
+              ) : (
+                <div className="relative flex items-center justify-center w-20 h-20">
+                  <div className="absolute inset-0 rounded-full border border-white/10 blur-[2px]"></div>
+                  <div className="absolute inset-0 rounded-full border-t border-white/60 animate-spin transition-all duration-1000 ease-in-out"></div>
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-white/20 to-white/5 shadow-[0_0_20px_rgba(255,255,255,0.1)]"></div>
+                </div>
+              )}
+
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-medium text-zinc-100">
+                  {analysisStatus === "STARTING" && "Initializing Engine..."}
+                  {analysisStatus === "POLLING" &&
+                    "Extracting semantic embeddings..."}
+                  {analysisStatus === "COMPLETED" && "Analysis Complete"}
+                </h3>
+                <p className="text-sm text-zinc-400 max-w-xs mx-auto text-balance">
+                  {analysisStatus === "POLLING"
+                    ? "Our SBERT transformer is matching your skills against the job description."
+                    : "Preparing your results interface..."}
+                </p>
+              </div>
+            </motion.div>
+          ) : (
+            /* IDLE / ERROR FORMS */
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden p-6 md:p-10"
+            >
+              <div className="space-y-8">
+                {/* Error Banner */}
+                {analysisStatus === "FAILED" && (
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <p className="text-sm font-medium">
+                      {error ||
+                        "The AI Engine failed to process this document."}
+                    </p>
+                    <button
+                      onClick={() => setStatus("IDLE")}
+                      className="ml-auto hover:text-red-300"
                     >
-                      1
-                    </div>
-                    <h2
-                      className="text-sm font-semibold"
-                      style={{ color: "var(--text)" }}
-                    >
-                      Job description
-                    </h2>
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
+                )}
+
+                {/* Role Description input */}
+                <div>
+                  <h2 className="text-zinc-100 font-medium mb-3 ml-1 flex items-center gap-2">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/10 text-xs text-white">
+                      1
+                    </span>
+                    Target Role
+                  </h2>
                   <textarea
-                    rows={4}
                     value={jd}
                     onChange={(e) => setJd(e.target.value)}
-                    placeholder="Paste the full job listing or describe the role…"
-                    className="w-full rounded-xl px-4 py-3 text-sm resize-none focus:outline-none transition-colors"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--border)",
-                      color: "var(--text)",
-                    }}
-                    onFocus={(e) =>
-                      (e.currentTarget.style.borderColor = "var(--accent)")
-                    }
-                    onBlur={(e) =>
-                      (e.currentTarget.style.borderColor = "var(--border)")
-                    }
-                    autoComplete="off"
+                    placeholder="Paste the full job description here..."
+                    className="w-full h-32 bg-black/20 border border-white/10 rounded-2xl p-4 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/30 transition-all resize-none font-light"
                   />
                 </div>
 
-                {/* Step 2 */}
-                <div
-                  className="p-6 border-b"
-                  style={{ borderColor: "var(--border)" }}
-                >
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div
-                      className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold"
-                      style={{
-                        background: "var(--accent-dim)",
-                        color: "var(--accent)",
-                      }}
-                    >
+                {/* File Dropzone */}
+                <div>
+                  <h2 className="text-zinc-100 font-medium mb-3 ml-1 flex items-center gap-2">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/10 text-xs text-white">
                       2
-                    </div>
-                    <h2
-                      className="text-sm font-semibold"
-                      style={{ color: "var(--text)" }}
-                    >
-                      Upload resume
-                    </h2>
-                    <span
-                      className="text-xs ml-auto"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      PDF or DOCX
                     </span>
-                  </div>
+                    Your Resume
+                  </h2>
 
                   {!file ? (
                     <div
-                      className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-150"
-                      style={{
-                        borderColor:
-                          state === "dragging"
-                            ? "var(--accent)"
-                            : "var(--border)",
-                        background:
-                          state === "dragging"
-                            ? "var(--accent-dim)"
-                            : "transparent",
-                      }}
-                      onClick={() => inputRef.current?.click()}
                       onDragOver={(e) => {
                         e.preventDefault();
-                        setState("dragging");
+                        setIsHovering(true);
                       }}
-                      onDragLeave={() => setState("idle")}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setState("idle");
-                        const f = e.dataTransfer.files[0];
-                        if (f) handleFile(f);
-                      }}
+                      onDragLeave={() => setIsHovering(false)}
+                      onDrop={handleDrop}
+                      onClick={() => inputRef.current?.click()}
+                      className={`relative overflow-hidden cursor-pointer w-full rounded-2xl border ${isHovering ? "border-white/40 bg-white/10" : "border-white/10 border-dashed bg-black/20 hover:bg-white/5"} transition-all duration-300 flex flex-col items-center justify-center py-12 px-6 group`}
                     >
                       <input
-                        ref={inputRef}
                         type="file"
                         accept=".pdf,.docx"
+                        ref={inputRef}
                         className="hidden"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) handleFile(f);
-                        }}
+                        onChange={(e) =>
+                          e.target.files?.[0] && handleFile(e.target.files[0])
+                        }
                       />
-                      <Upload
-                        className="w-7 h-7 mx-auto mb-3"
-                        style={{ color: "var(--text-muted)" }}
-                      />
-                      <p
-                        className="text-sm font-medium"
-                        style={{ color: "var(--text-body)" }}
-                      >
-                        {state === "dragging"
-                          ? "Drop it here"
-                          : "Drag & drop your resume"}
+                      <div className="p-4 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors mb-4 border border-white/5">
+                        <Upload className="w-6 h-6 text-zinc-400 group-hover:text-zinc-200 transition-colors" />
+                      </div>
+                      <p className="text-zinc-300 font-medium mb-1">
+                        Upload exactly what you'll submit
                       </p>
-                      <p
-                        className="text-xs mt-1"
-                        style={{ color: "var(--text-muted)" }}
-                      >
-                        or click to browse
+                      <p className="text-zinc-500 font-light text-sm">
+                        PDF or DOCX max 10MB
                       </p>
                     </div>
                   ) : (
-                    <div
-                      className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{
-                        background: "var(--accent-dim)",
-                        border: "1px solid rgba(232,169,70,0.2)",
-                      }}
-                    >
-                      <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                        style={{
-                          background: "var(--accent)",
-                          color: "#09090b",
-                        }}
-                      >
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="text-sm font-medium truncate"
-                          style={{ color: "var(--text)" }}
-                        >
-                          {file.name}
-                        </p>
-                        <p
-                          className="text-xs mt-0.5"
-                          style={{ color: "var(--text-muted)" }}
-                        >
-                          {(file.size / 1024).toFixed(0)} KB · Ready
-                        </p>
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 group">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/5 text-zinc-300">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-zinc-200 font-medium truncate text-sm">
+                            {file.name}
+                          </p>
+                          <p className="text-zinc-500 font-light text-xs mt-0.5">
+                            {(file.size / 1024).toFixed(0)} KB
+                          </p>
+                        </div>
                       </div>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setFile(null);
-                          setState("idle");
                           if (inputRef.current) inputRef.current.value = "";
                         }}
-                        className="p-1.5 rounded-lg transition-colors focus-ring shrink-0"
-                        style={{ color: "var(--text-muted)" }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = "var(--text)";
-                          e.currentTarget.style.background =
-                            "var(--bg-elevated)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = "var(--text-muted)";
-                          e.currentTarget.style.background = "transparent";
-                        }}
+                        className="p-2 rounded-full hover:bg-white/10 text-zinc-500 hover:text-white transition-colors"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
                   )}
                 </div>
 
-                {/* Error */}
-                {state === "error" && (
-                  <div className="px-6 pt-5">
-                    <div
-                      className="flex items-start gap-2.5 p-3.5 rounded-xl"
-                      style={{
-                        background: "var(--negative-dim)",
-                        border: "1px solid rgba(224,92,77,0.2)",
-                      }}
-                    >
-                      <AlertCircle
-                        className="w-4 h-4 shrink-0 mt-0.5"
-                        style={{ color: "var(--negative)" }}
-                      />
-                      <p
-                        className="text-sm"
-                        style={{ color: "var(--negative)" }}
-                      >
-                        {errorMsg || "Something went wrong. Please try again."}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Submit */}
-                <div className="p-6">
+                <div className="pt-4">
                   <button
-                    onClick={startAnalysis}
-                    disabled={isRunning}
-                    className="btn-primary w-full focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleAnalyze}
+                    className="w-full relative flex items-center justify-center gap-2 bg-zinc-100 hover:bg-white text-zinc-900 font-medium rounded-2xl py-4 transition-all duration-300 overflow-hidden shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:shadow-[0_0_60px_rgba(255,255,255,0.2)] active:scale-[0.98]"
                   >
-                    Analyze Resume
-                    <ArrowUpRight className="w-4 h-4 shrink-0" />
+                    <span>Analyze Match</span>
+                    <ArrowUpRight className="w-4 h-4 opacity-70" />
                   </button>
-                  <p
-                    className="text-xs text-center mt-3"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Your file is deleted immediately after analysis
-                  </p>
                 </div>
-              </motion.div>
-            )}
-
-            {/* Analyzing / Done */}
-            {(state === "analyzing" || state === "done") && (
-              <motion.div
-                key="analyzing"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="glass-card overflow-hidden relative"
-              >
-                {/* Terminal header */}
-                <div
-                  className="flex items-center gap-1.5 px-5 py-3 border-b"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--border)",
-                  }}
-                >
-                  {["#ff5f57", "#febc2e", "#28c840"].map((c, i) => (
-                    <div
-                      key={i}
-                      className="w-2.5 h-2.5 rounded-full"
-                      style={{ background: c }}
-                    />
-                  ))}
-                  <span
-                    className="ml-3 text-xs font-mono"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    careerlens ~ analyzing
-                  </span>
-                </div>
-
-                {/* Progress */}
-                <div
-                  className="px-5 py-4 border-b"
-                  style={{ borderColor: "var(--border)" }}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span
-                      className="text-xs"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      Progress
-                    </span>
-                    <span
-                      className="text-xs font-mono tabular-nums"
-                      style={{ color: "var(--accent)" }}
-                    >
-                      {Math.round(Math.min(progress, 100))}%
-                    </span>
-                  </div>
-                  <div
-                    className="w-full h-1 rounded-full overflow-hidden"
-                    style={{ background: "var(--bg-elevated)" }}
-                  >
-                    <motion.div
-                      className="h-1 rounded-full"
-                      style={{ background: "var(--accent)" }}
-                      animate={{ width: `${Math.min(progress, 100)}%` }}
-                      transition={{ duration: 0.4 }}
-                    />
-                  </div>
-                </div>
-
-                {/* Terminal lines */}
-                <div className="p-5 min-h-[200px] font-mono text-xs space-y-1.5">
-                  {termLines.map((line, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: -4 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center gap-2"
-                      style={{ color: "var(--text-body)" }}
-                    >
-                      <span
-                        style={{ color: "var(--accent)" }}
-                        className="shrink-0"
-                      >
-                        $
-                      </span>
-                      {line}
-                    </motion.div>
-                  ))}
-                  {state !== "done" && (
-                    <div
-                      className="flex items-center gap-2"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      <span style={{ color: "var(--accent)" }}>$</span>
-                      <span className="animate-pulse">_</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Done overlay */}
-                <AnimatePresence>
-                  {state === "done" && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl"
-                      style={{ background: "rgba(9,9,11,0.95)" }}
-                    >
-                      <CheckCircle2
-                        className="w-12 h-12"
-                        style={{ color: "var(--accent)" }}
-                      />
-                      <div className="text-center">
-                        <p
-                          className="font-medium"
-                          style={{ color: "var(--text)" }}
-                        >
-                          Analysis complete
-                        </p>
-                        <p
-                          className="text-sm mt-1"
-                          style={{ color: "var(--text-body)" }}
-                        >
-                          Redirecting to your results…
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />

@@ -1,3 +1,10 @@
+// =============================================================================
+// CAREERLENS 3.0 — DATABASE SCHEMA
+// -----------------------------------------------------------------------------
+// Engine: PostgreSQL | ORM: Prisma
+// Architecture: Next.js (Auth & UI) <--> FastAPI (Async ML Microservice)
+// =============================================================================
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,19 +14,28 @@ datasource db {
   url       = env("DATABASE_URL")
 }
 
+// =============================================================================
+// 1. AUTHENTICATION & BILLING LAYER (NextAuth.js Standard)
+// =============================================================================
+
 model User {
   id            String     @id @default(cuid())
   name          String?
   email         String?    @unique
   emailVerified DateTime?
   image         String?
-  tier          String     @default("free")
-  analysisCount Int        @default(0)
-  resetDate     DateTime   @default(now())
+  
+  // Billing & Rate Limiting
+  tier          String     @default("free") // e.g., 'free', 'pro'
+  analysisCount Int        @default(0)      // Track usage to enforce limits
+  resetDate     DateTime   @default(now())  // When do their monthly credits reset?
+  
   createdAt     DateTime   @default(now())
+  
+  // Relations
   accounts      Account[]
   sessions      Session[]
-  analyses      Analysis[]
+  analyses      Analysis[] // Links user to their ML job history
 }
 
 model Account {
@@ -35,6 +51,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
+  
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
@@ -46,6 +63,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
+  
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -59,26 +77,69 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model Analysis {
-  id             String   @id @default(cuid())
-  userId         String
-  finalScore     Float
-  readinessLabel String
-  matchedCount   Int
-  missingCount   Int
-  totalCount     Int
-  resumeSkills   Json
-  jdSkills       Json
-  matchedSkills  Json
-  missingSkills  Json
-  explanations   Json
-  courses        Json
-  metadata       Json
-  resumeText     String?
-  jdText         String?
-  jobTitle       String?
-  createdAt      DateTime @default(now())
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+// =============================================================================
+// 2. ASYNCHRONOUS STATE MACHINE LAYER (The ML Engine)
+// -----------------------------------------------------------------------------
+// ML pipelines (SBERT/NLP) take 10-15 seconds and exceed Vercel timeouts. 
+// We decouple the Next.js frontend from the Python backend using this State Machine.
+// Flow: Next.js creates job (PENDING) -> Python picks it up (PROCESSING) -> 
+// Python fires a webhook to inject data and mark as (COMPLETED).
+// =============================================================================
 
+enum JobStatus {
+  PENDING      // 1. Initialized by Next.js. Waiting for Python worker.
+  PROCESSING   // 2. Python acknowledged. SBERT and NetworkX are calculating.
+  COMPLETED    // 3. Success. Payload injected via webhook. UI can render.
+  FAILED       // 4. Graceful fallback if Python crashes or PDF is unreadable.
+}
+
+model Analysis {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // ---------------------------------------------------------------------------
+  // THE INPUTS (Saved immediately by Next.js at T=0)
+  // ---------------------------------------------------------------------------
+  resumeText       String?   @db.Text 
+  jdText           String?   @db.Text
+  jobTitle         String?
+  
+  // ---------------------------------------------------------------------------
+  // THE GATEKEEPER (Tracks the exact status of the background worker)
+  // ---------------------------------------------------------------------------
+  status           JobStatus @default(PENDING)
+  
+  // ---------------------------------------------------------------------------
+  // THE ML OUTPUTS (Temporal Decoupling)
+  // ---------------------------------------------------------------------------
+  // Notice these are ALL nullable ('?'). Python calculates these heavy metrics 
+  // and injects them 10-15 seconds later. If they were required, Next.js 
+  // wouldn't be able to create the row to start the job.
+  
+  finalScore       Float?
+  readinessLabel   String?
+  matchedCount     Int?
+  missingCount     Int?
+  totalCount       Int?
+  
+  // Storing granular Stage 2 - 6 data as JSONB for infinite schema flexibility.
+  // This allows the UI to build complex Radar Charts and Ontology tables.
+  resumeSkills     Json?
+  jdSkills         Json?
+  matchedSkills    Json?
+  missingSkills    Json?
+  explanations     Json?
+  courses          Json?
+  metadata         Json?
+  
+  // Stage 6 Output artifact (URL to the generated AWS S3 / UploadThing file)
+  pdfReportUrl     String?   
+
+  // Timestamps to measure actual pipeline execution time
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt @default(now())
+
+  // Performance Optimization: Prevent full table scans when querying a user's history
   @@index([userId])
 }
